@@ -1,0 +1,1076 @@
+# PROJECT: AURA-BOLT
+## Burst-Aware Adaptive ARQ and Sliding Window Optimization Framework
+
+Act as a senior computer networks engineer, full-stack developer, network protocol researcher, UI/UX designer, and software testing engineer.
+
+Your task is to design and implement a complete, functional, research-oriented Computer Networks project called:
+
+**AURA-BOLT: Burst-Aware Adaptive ARQ and Sliding Window Optimization for Reliable Data Transfer Under Dynamic Network Conditions**
+
+This is an academic project on Performance Analysis and Evaluation of ARQ Protocols and Sliding Window Protocols.
+
+The project must be technically correct, experimentally reproducible, visually impressive, and suitable for a strict university project evaluation panel.
+
+Do not build merely a static dashboard, a collection of charts, or a frontend-only simulation. Implement the actual protocol logic, network impairment model, adaptive decision mechanism, and experiment engine.
+
+Do not fabricate experimental results, patent claims, or performance improvements.
+
+---
+
+# 1. PROJECT OBJECTIVE
+
+Build an interactive application that implements and compares:
+
+1. Stop-and-Wait ARQ.
+2. Go-Back-N ARQ.
+3. Selective Repeat ARQ.
+4. AURA-BOLT Adaptive ARQ, which dynamically selects appropriate configurations based on observed network conditions.
+
+The application should investigate whether a burst-aware, recovery-cost-based adaptive controller can improve useful throughput and transfer efficiency while respecting latency and receiver-buffer constraints.
+
+The system must support:
+
+- Sender and receiver simulation.
+- Real file transfer between separate processes.
+- Packet loss and acknowledgement loss.
+- Network delay and jitter.
+- Out-of-order packet delivery.
+- Retransmission timeouts.
+- Sliding-window visualization.
+- Burst-loss detection.
+- Adaptive window-size selection.
+- Adaptive retransmission-timeout estimation.
+- Performance measurement.
+- Comparative experiments.
+- File-integrity verification.
+
+Clearly distinguish between the deterministic network simulator and the live UDP transfer implementation.
+
+Do not describe simulated results as real-world measurements.
+
+---
+
+# 2. TECHNOLOGY STACK
+
+Use the following architecture.
+
+## Frontend
+
+- React.
+- TypeScript.
+- Vite.
+- Tailwind CSS.
+- shadcn/ui where compatible.
+- Lucide icons.
+- Recharts for charts.
+- Framer Motion for subtle animations.
+- React Router if multiple pages are needed.
+
+## Backend
+
+- Python.
+- FastAPI.
+- Uvicorn.
+- Pydantic for request validation.
+- asyncio for asynchronous networking.
+- SQLite for experiment metadata and results.
+- Pandas for analysis and CSV export.
+- Pytest for automated tests.
+
+## Networking
+
+Implement the protocol engine over UDP for the live-transfer mode.
+
+Create a separate deterministic network simulator for repeatable experiments.
+
+The frontend must communicate with the backend through REST APIs and WebSockets.
+
+Use WebSockets for live packet events, experiment progress, controller decisions, and metric updates.
+
+Do not put protocol logic exclusively inside the React frontend.
+
+If Google AI Studio cannot execute or host the Python backend directly, generate the complete backend source code and provide clear local-run instructions. Do not replace the backend with a fake frontend simulation while claiming that real UDP networking is implemented.
+
+---
+
+# 3. USER INTERFACE AND VISUAL DESIGN
+
+Build a polished, professional network research laboratory interface.
+
+The design must look like a specialized networking tool, not a generic AI-generated dashboard.
+
+## Design direction
+
+Use a sophisticated dark technical interface.
+
+Suggested visual palette:
+
+- Background: deep navy or near-black.
+- Primary accent: restrained cyan.
+- Secondary accent: amber.
+- Success: green.
+- Warning: orange.
+- Failure: red.
+- Text: high-contrast white and gray.
+
+Use colors consistently and avoid excessive gradients, glowing cards, decorative AI imagery, and oversized rounded containers.
+
+Use a compact technical layout with clear information hierarchy.
+
+Include:
+
+- A professional sidebar.
+- A compact top navigation bar.
+- Real-time metric cards.
+- Technical tables.
+- Interactive charts.
+- Packet-flow visualization.
+- Sliding-window diagrams.
+- Experiment controls.
+- Logs and decision explanations.
+
+The interface must be responsive, but prioritize a desktop display because the project will be demonstrated on a laptop or laboratory computer.
+
+Create a consistent design system with reusable components, spacing, typography, and status indicators.
+
+---
+
+# 4. APPLICATION NAVIGATION
+
+Create the following pages.
+
+## Page A: Research Dashboard
+
+Display:
+
+- Current experiment status.
+- Active protocol.
+- Network condition summary.
+- Current sending-window size.
+- Estimated RTT.
+- Measured packet-loss rate.
+- Goodput.
+- Retransmission ratio.
+- Transfer completion percentage.
+- Receiver-buffer occupancy.
+- Controller's current operating mode.
+
+Add charts for:
+
+- Goodput over time.
+- RTT over time.
+- Packet-loss rate over time.
+- Retransmissions over time.
+- Window-size changes over time.
+
+All metrics must come from actual backend measurements or explicitly identified simulation data.
+
+Show an empty state before experiments are run.
+
+Never generate random metrics simply to make the dashboard appear active.
+
+## Page B: Live Packet Laboratory
+
+Build an animated network visualization containing:
+
+- Sender.
+- Network channel.
+- Receiver.
+- Data frames.
+- ACK messages.
+- NACK messages where applicable.
+- Lost frames.
+- Retransmitted frames.
+- Duplicate frames.
+- Out-of-order arrivals.
+- Sender window.
+- Receiver window.
+
+Display sequence numbers and acknowledgement numbers.
+
+Allow the user to pause and resume the visualization.
+
+Clicking a frame should display its details:
+
+- Sequence number.
+- Transmission timestamp.
+- Arrival timestamp, if delivered.
+- Acknowledgement status.
+- Retransmission count.
+- Frame size.
+- Integrity status.
+
+The animation must be driven by backend events, not fabricated frontend events.
+
+Use event replay for deterministic simulation and WebSockets for live-transfer telemetry.
+
+## Page C: Protocol Comparison
+
+Compare:
+
+- Stop-and-Wait.
+- Go-Back-N.
+- Selective Repeat.
+- AURA-BOLT.
+
+Include:
+
+- Goodput.
+- Total transmission count.
+- Retransmission count.
+- Completion time.
+- Mean delivery latency.
+- 95th-percentile delivery latency.
+- Sender utilization.
+- Buffer usage.
+- CPU usage where measurable.
+
+Allow the user to select metrics and compare experiments.
+
+Include a clear explanation of how each metric is calculated.
+
+## Page D: Adaptive Controller
+
+Create an interactive inspection page that explains every adaptive decision.
+
+Display:
+
+- Current configuration.
+- Previous configuration.
+- Selected configuration.
+- RTT estimate.
+- RTT variation.
+- Recent loss rate.
+- Loss-burst statistics.
+- Outstanding frames.
+- Current window utilization.
+- Receiver-buffer occupancy.
+- Estimated bandwidth-delay product.
+- Predicted goodput.
+- Predicted latency.
+- Observed results after applying a change.
+
+Every decision should have an explanation derived from actual controller inputs.
+
+Example:
+
+Decision: Increase the sending window.
+
+Reason:
+- RTT is high.
+- The current window is not sufficient to keep the channel occupied.
+- Recent packet loss is low.
+- Receiver-buffer capacity is available.
+
+Previous window: 8 frames.
+
+New window: 16 frames.
+
+Expected outcome: Improved useful throughput, subject to available bandwidth and other constraints.
+
+Status: Awaiting validation.
+
+This example is illustrative. The application must calculate its actual decisions.
+
+Include a fallback mode if the controller encounters unreliable measurements or invalid predictions.
+
+## Page E: Experiment Builder
+
+Provide controls for:
+
+- Protocol.
+- File size.
+- Frame payload size.
+- One-way propagation delay.
+- Jitter.
+- Packet-loss rate.
+- ACK-loss rate.
+- Available bandwidth.
+- Random or bursty loss.
+- Burst length.
+- Burst frequency.
+- Sender window size.
+- Receiver window size.
+- Initial retransmission timeout.
+- Sequence-number space.
+- Number of experiment repetitions.
+- Random seed.
+
+Provide presets:
+
+1. Stable Network.
+2. High-Latency Network.
+3. Random Packet Loss.
+4. Burst-Loss Network.
+5. ACK-Loss Network.
+6. Bandwidth-Constrained Network.
+7. Sudden Network Degradation.
+8. Network Recovery.
+9. Custom Scenario.
+
+Allow users to save, duplicate, and rerun experiment configurations.
+
+Validate all parameters before execution.
+
+## Page F: Results and Research Analysis
+
+Generate:
+
+- Comparison tables.
+- Time-series charts.
+- Goodput plots.
+- Retransmission analysis.
+- Latency distributions.
+- Window-size comparisons.
+- Burst-length sensitivity analysis.
+- Prediction-versus-measurement plots.
+- CSV exports.
+- Experiment summary reports.
+
+Display means, standard deviations, and confidence intervals where appropriate.
+
+Do not claim statistical significance without conducting an appropriate statistical test.
+
+Distinguish simulation results from live UDP measurements.
+
+---
+
+# 5. IMPLEMENT STOP-AND-WAIT ARQ
+
+Implement a complete Stop-and-Wait ARQ state machine.
+
+Requirements:
+
+- Sender transmits one outstanding data frame at a time.
+- Receiver validates incoming frames.
+- Receiver sends acknowledgements.
+- Sender retransmits after a timeout.
+- Duplicate data frames are handled correctly.
+- Duplicate acknowledgements are handled correctly.
+- Corrupted frames are rejected.
+- The sender eventually completes or reports a bounded failure.
+
+Implement sequence-number handling correctly.
+
+Add tests for:
+
+- Successful transmission.
+- Data-frame loss.
+- ACK loss.
+- Duplicate frames.
+- Corrupted frames.
+- Timeout and retransmission.
+- Sequence-number wraparound.
+
+Record every event with a timestamp.
+
+---
+
+# 6. IMPLEMENT GO-BACK-N ARQ
+
+Implement Go-Back-N with:
+
+- Sender base.
+- Next sequence number.
+- Configurable sender window.
+- Cumulative acknowledgements.
+- Retransmission timer management.
+- Receiver state.
+- Out-of-order frame rejection under the standard GBN model.
+- Retransmission of outstanding frames after a timeout.
+
+Do not implement cumulative acknowledgements incorrectly.
+
+Handle lost acknowledgements, duplicate ACKs, timeouts, and sequence-number wraparound.
+
+Use a consistent sequence-number space.
+
+Add tests for:
+
+- Loss of the oldest outstanding frame.
+- Loss of a middle frame.
+- Loss of a later frame.
+- ACK loss.
+- Duplicate ACKs.
+- Window advancement.
+- Timer expiration.
+- Sequence-number wraparound.
+
+The implementation must demonstrate why losing one frame may cause additional retransmissions in Go-Back-N.
+
+---
+
+# 7. IMPLEMENT SELECTIVE REPEAT ARQ
+
+Implement Selective Repeat with:
+
+- Independent sender-side frame state.
+- Individual retransmission timers.
+- Individual acknowledgements.
+- Receiver buffering for out-of-order frames.
+- Selective retransmission.
+- Correct delivery ordering.
+- Duplicate detection.
+- Sequence-number wraparound.
+
+Respect the sequence-number-space constraint.
+
+For a sequence-number modulus M, use compatible sender and receiver windows satisfying the standard Selective Repeat safety condition:
+
+Ws + Wr <= M
+
+For equal-sized windows, this gives:
+
+W <= M/2.
+
+Do not simplify Selective Repeat into cumulative-ACK Go-Back-N behavior.
+
+Add tests for:
+
+- Lost data frames.
+- Lost acknowledgements.
+- Out-of-order arrivals.
+- Duplicate frames.
+- Individual retransmission timers.
+- Receiver-buffer behavior.
+- Window advancement.
+- Sequence-number wraparound.
+
+---
+
+# 8. NETWORK IMPAIRMENT ENGINE
+
+Build a deterministic impairment engine.
+
+It must support:
+
+- Configurable propagation delay.
+- Configurable jitter.
+- Random packet loss.
+- Burst packet loss.
+- ACK loss.
+- Bandwidth constraints.
+- Packet reordering.
+- Optional frame corruption.
+
+Use deterministic random seeds so that the same scenario can be reproduced.
+
+Implement burst loss using a clearly documented model, such as a two-state Gilbert-Elliott channel or a configurable burst generator.
+
+Document the difference between independent random loss and correlated loss.
+
+Use a queue-based event simulation or an equivalent event-driven design.
+
+Ensure that simulated events are processed according to simulated time rather than depending on arbitrary frontend animation delays.
+
+Add safeguards against infinite retransmission loops.
+
+Record all dropped frames and acknowledgements.
+
+---
+
+# 9. AURA-BOLT ADAPTIVE CONTROLLER
+
+This is the central research component.
+
+Implement a transparent, measurable, rule-based adaptive controller before adding machine learning.
+
+The controller should use:
+
+- Smoothed RTT.
+- RTT variation.
+- Recent packet-loss rate.
+- Burst-loss statistics.
+- Retransmission history.
+- Current sender-window occupancy.
+- Receiver-buffer occupancy.
+- Measured goodput.
+- Estimated bandwidth-delay product.
+- Recent prediction errors.
+
+The controller must consider:
+
+1. Whether to keep the current protocol.
+2. Whether to increase or decrease the sender window.
+3. Whether to adjust retransmission timeouts.
+4. Whether to enter conservative recovery mode.
+5. Whether a protocol change is worthwhile.
+
+Implement the following in stages:
+
+Stage 1: Adaptive window sizing.
+
+Stage 2: Adaptive retransmission-timeout estimation.
+
+Stage 3: Burst-aware recovery-cost estimation.
+
+Stage 4: Optional synchronized protocol switching between endpoints.
+
+Do not implement unsafe mid-transfer protocol switching by merely changing an enum.
+
+For any protocol switch, define:
+
+- A transition boundary.
+- Negotiation between sender and receiver.
+- Treatment of outstanding frames.
+- Sequence-number interpretation.
+- Acknowledgement compatibility.
+- Buffer-state reconciliation.
+- Rollback behavior if negotiation fails.
+
+If this is too complex for the first implementation, keep protocol selection fixed during each transfer and adapt only parameters supported by that protocol.
+
+---
+
+# 10. BURST-AWARE RECOVERY-COST MODEL
+
+Investigate a recovery-cost model that distinguishes isolated packet loss from correlated loss bursts.
+
+For each candidate configuration, estimate:
+
+- Useful goodput.
+- Expected retransmission overhead.
+- Completion latency.
+- Receiver-buffer usage.
+- Adaptation overhead.
+
+Use an explicit optimization objective.
+
+For example:
+
+J(c) = alpha * predicted_goodput
+       - beta * predicted_p95_latency
+       - gamma * predicted_retransmission_cost
+       - delta * predicted_buffer_usage
+
+Here, c represents a candidate configuration.
+
+Apply resource constraints and reject infeasible candidates.
+
+Normalize metrics before combining them so that the weights are interpretable.
+
+Allow the weights to be configured.
+
+Do not assume that this formula is novel or optimal.
+
+Compare the proposed controller with:
+
+- Fixed Go-Back-N.
+- Fixed Selective Repeat.
+- Static, carefully tuned window sizes.
+- A simple loss-rate-based adaptive controller.
+- The burst-aware AURA-BOLT controller.
+
+Implement ablation experiments that disable burst detection and determine whether burst-aware estimation contributes measurable value.
+
+If prediction models are used, train and evaluate them using separate datasets or appropriately separated experiment traces.
+
+Do not evaluate the controller only on the same conditions used to tune its parameters.
+
+---
+
+# 11. PREDICT, APPLY, VERIFY LOOP
+
+Implement the following closed-loop process:
+
+STEP 1 — OBSERVE
+
+Collect current network and protocol measurements.
+
+STEP 2 — PREDICT
+
+Evaluate feasible candidate configurations using the recovery-cost model.
+
+STEP 3 — SELECT
+
+Choose a configuration according to the defined objective and constraints.
+
+STEP 4 — APPLY
+
+Apply the configuration safely at the appropriate protocol boundary.
+
+STEP 5 — MEASURE
+
+Collect the actual post-change performance.
+
+STEP 6 — VERIFY
+
+Compare predicted and measured results.
+
+STEP 7 — UPDATE
+
+Record prediction error and update model estimates where appropriate.
+
+STEP 8 — FALLBACK
+
+If measurements are unreliable or performance violates configured constraints, revert to a safe configuration.
+
+Store a complete audit trail.
+
+The UI must display the inputs, chosen configuration, expected effect, measured outcome, and decision status.
+
+---
+
+# 12. REAL UDP FILE TRANSFER
+
+Implement a genuine file-transfer mode separate from the deterministic simulator.
+
+Create sender and receiver processes that can run on different machines.
+
+Use UDP datagrams carrying a custom application-level frame format.
+
+Define a versioned packet structure containing fields such as:
+
+- Protocol version.
+- Session identifier.
+- Message type.
+- Sequence number.
+- Acknowledgement number.
+- Payload length.
+- Integrity-check field.
+- Optional negotiation or control data.
+- Payload.
+
+Use explicit network byte order and validated packet lengths.
+
+Document the packet structure.
+
+Use message types for data, ACK, NACK if applicable, session initialization, completion, and error reporting.
+
+Implement:
+
+- Session initialization.
+- Receiver readiness.
+- Transfer metadata.
+- Frame validation.
+- Sequence tracking.
+- Retransmission.
+- Duplicate suppression.
+- Ordered file reconstruction.
+- Transfer completion confirmation.
+- Connection timeout handling.
+- SHA-256 verification.
+
+Add a maximum transfer size or configurable resource limits.
+
+Do not allow malformed packets to allocate unbounded memory.
+
+Clearly document that this experimental UDP-based protocol does not automatically provide the security, congestion control, or interoperability guarantees of TCP.
+
+Do not claim that a transfer is complete until the receiver has confirmed successful reconstruction and integrity verification.
+
+Provide a local two-process test mode and instructions for testing between two computers on a trusted network.
+
+---
+
+# 13. PERFORMANCE METRICS
+
+Calculate metrics from timestamped events.
+
+Implement the following definitions.
+
+GOODPUT:
+
+Useful application payload bits successfully delivered divided by elapsed transfer time.
+
+TRANSMISSION THROUGHPUT:
+
+Define the measurement boundary explicitly and calculate the number of bits transmitted per unit time, including the specified protocol overhead where appropriate.
+
+RETRANSMISSION RATIO:
+
+Retransmitted data-frame transmissions divided by total data-frame transmissions.
+
+LATENCY:
+
+Measure the appropriate frame delivery latency using a documented timestamp convention.
+
+COMPLETION TIME:
+
+Time between the defined transfer-start and successful-completion events.
+
+WINDOW UTILIZATION:
+
+Measure how effectively the sender keeps the permitted window occupied.
+
+BUFFER UTILIZATION:
+
+Track actual receiver-buffer usage relative to its configured capacity.
+
+ADAPTATION OVERHEAD:
+
+Measure the additional work and delay associated with monitoring and changing configurations.
+
+FILE INTEGRITY:
+
+Compare the sender's original SHA-256 hash with the receiver's reconstructed-file hash.
+
+Handle empty transfers, failed transfers, and incomplete measurements correctly.
+
+Never silently treat missing data as zero.
+
+---
+
+# 14. EXPERIMENTAL METHODOLOGY
+
+Create an experiment runner that can execute repeated tests.
+
+Suggested test dimensions:
+
+RTT:
+- 10 ms.
+- 25 ms.
+- 75 ms.
+- 150 ms.
+
+Packet-loss rate:
+- 0%.
+- 1%.
+- 3%.
+- 5%.
+- 10%.
+
+Window sizes:
+- 1.
+- 4.
+- 8.
+- 16.
+- 32.
+
+Loss patterns:
+- Independent random loss.
+- Short bursts.
+- Long bursts.
+- Alternating loss.
+- Sudden loss-rate increase followed by recovery.
+
+Use consistent packet sizes, network conditions, and impairment traces when comparing protocols.
+
+Where appropriate, use repeated runs with multiple random seeds.
+
+Generate:
+
+- Mean performance.
+- Standard deviation.
+- Confidence intervals.
+- Completion-time distributions.
+- Goodput distributions.
+- Retransmission distributions.
+
+Include an experiment comparing:
+
+A. Fixed Go-Back-N.
+
+B. Fixed Selective Repeat.
+
+C. Static tuned configurations.
+
+D. Simple loss-rate-based adaptation.
+
+E. Burst-aware AURA-BOLT.
+
+Create CSV export and reproducibility metadata.
+
+Do not invent results or display placeholder improvements as factual findings.
+
+If experiments have not been run, show an explicit message that results are unavailable.
+
+---
+
+# 15. DATABASE DESIGN
+
+Use SQLite for experiment metadata.
+
+Create suitable tables for:
+
+- Experiments.
+- Experiment configurations.
+- Protocol runs.
+- Metric samples.
+- Packet events.
+- Controller decisions.
+- Prediction-versus-measurement records.
+- File-transfer sessions.
+
+Use appropriate foreign keys and indexes.
+
+Store timestamps in a consistent format.
+
+Avoid writing every high-frequency packet event directly to the database synchronously if doing so would distort timing measurements. Use an appropriate buffering or batching strategy.
+
+Provide APIs for retrieving experiments and exporting results.
+
+---
+
+# 16. BACKEND API
+
+Implement documented FastAPI endpoints.
+
+Suggested endpoints:
+
+POST /api/experiments
+
+Create an experiment.
+
+GET /api/experiments
+
+List experiments.
+
+GET /api/experiments/{experiment_id}
+
+Retrieve experiment metadata and status.
+
+POST /api/experiments/{experiment_id}/start
+
+Start an experiment.
+
+POST /api/experiments/{experiment_id}/stop
+
+Stop an experiment safely.
+
+GET /api/experiments/{experiment_id}/results
+
+Retrieve results.
+
+GET /api/experiments/{experiment_id}/events
+
+Retrieve recorded packet events.
+
+GET /api/experiments/{experiment_id}/decisions
+
+Retrieve adaptive-controller decisions.
+
+GET /api/experiments/{experiment_id}/export
+
+Export results in CSV format.
+
+GET /api/health
+
+Check backend health.
+
+Create a WebSocket endpoint for live events and experiment updates.
+
+Validate input schemas and handle errors clearly.
+
+Prevent concurrent experiment execution from corrupting shared state.
+
+Use a clear separation between API handlers, protocol implementations, simulation logic, controller logic, metrics, and persistence.
+
+---
+
+# 17. AUTOMATED TESTING
+
+Create unit and integration tests for:
+
+- All three ARQ protocols.
+- Lost data frames.
+- Lost acknowledgements.
+- Duplicate frames.
+- Out-of-order frames.
+- Timeout handling.
+- Sequence-number wraparound.
+- Window constraints.
+- Receiver-buffer limits.
+- File-integrity verification.
+- Adaptive-controller decisions.
+- Network impairment reproducibility.
+- Experiment cancellation.
+- Malformed packet handling.
+- Backend API validation.
+- Prediction-versus-measurement logging.
+
+Create regression tests that verify identical deterministic simulation results for the same configuration and random seed.
+
+Include tests that detect deadlocks and endless retransmission loops.
+
+Do not claim tests pass until they have actually been executed.
+
+---
+
+# 18. RESEARCH AND PATENT-ORIENTED DOCUMENTATION
+
+Create a technical documentation section containing:
+
+1. Problem statement.
+2. Existing ARQ protocol limitations.
+3. Research question.
+4. Proposed architecture.
+5. Mathematical formulation.
+6. Protocol state machines.
+7. Network impairment model.
+8. Adaptive-controller algorithm.
+9. Experimental methodology.
+10. Baseline comparisons.
+11. Ablation studies.
+12. Limitations.
+13. Reproducibility instructions.
+14. Preliminary prior-art review.
+
+Treat patentability as an open question.
+
+Do not claim that the project is patentable or that its algorithm is novel without a substantiated prior-art analysis.
+
+Document the specific technical contribution being investigated and explain how it differs from the baselines implemented in the project.
+
+Include relevant RFCs, research papers, and patents only when their existence and relevance have been verified.
+
+Do not invent citations.
+
+---
+
+# 19. REQUIRED PROJECT STRUCTURE
+
+Generate a maintainable repository with separate frontend and backend directories.
+
+Use a structure similar to:
+
+aura-bolt/
+    frontend/
+        src/
+            components/
+            pages/
+            hooks/
+            services/
+            types/
+            charts/
+            visualizations/
+        package.json
+        tsconfig.json
+        vite.config.ts
+
+    backend/
+        app/
+            main.py
+            api/
+            protocols/
+                stop_and_wait.py
+                go_back_n.py
+                selective_repeat.py
+            simulation/
+                channel.py
+                event_scheduler.py
+                loss_models.py
+            adaptive/
+                controller.py
+                burst_detector.py
+                cost_model.py
+            transfer/
+                packet_format.py
+                sender.py
+                receiver.py
+                integrity.py
+            metrics/
+                collector.py
+                calculations.py
+            database/
+                models.py
+                repository.py
+            experiments/
+                runner.py
+                scenarios.py
+        tests/
+        requirements.txt
+
+    docs/
+        architecture.md
+        protocol_design.md
+        experimental_methodology.md
+        prior_art_review.md
+
+    README.md
+    .gitignore
+
+Adjust the structure where necessary, but preserve clear separation of responsibilities.
+
+---
+
+# 20. IMPLEMENTATION WORKFLOW
+
+Do not attempt to generate an enormous amount of incomplete code in one step.
+
+Follow this order:
+
+PHASE 1:
+Establish the architecture, repository structure, data models, and API contracts.
+
+PHASE 2:
+Implement and test the deterministic network simulator.
+
+PHASE 3:
+Implement and test Stop-and-Wait, Go-Back-N, and Selective Repeat.
+
+PHASE 4:
+Implement performance metrics and experiment reproducibility.
+
+PHASE 5:
+Implement the adaptive controller and burst-aware recovery-cost estimator.
+
+PHASE 6:
+Implement the real UDP file-transfer engine.
+
+PHASE 7:
+Build the frontend dashboard and live visualization.
+
+PHASE 8:
+Integrate the frontend and backend.
+
+PHASE 9:
+Run tests, fix bugs, and verify all major workflows.
+
+PHASE 10:
+Prepare the final demonstration and research documentation.
+
+At the beginning, provide the architecture and the initial implementation files.
+
+Then proceed module by module.
+
+For every phase:
+
+- List the files created or modified.
+- Provide complete source code for each required file.
+- Explain how the module works.
+- Give exact commands to install dependencies and run it.
+- Include tests.
+- Identify known limitations.
+- Verify integration assumptions.
+
+Do not provide pseudocode when executable implementation is required.
+
+Do not omit imports, configuration files, schemas, or critical error handling.
+
+Do not claim that a feature is implemented if it is only represented by a UI mockup.
+
+If you cannot execute the code, explicitly state that it has not been executed and provide verification commands.
+
+---
+
+# 21. ACCEPTANCE CRITERIA
+
+The final project is acceptable only if:
+
+1. All three conventional ARQ protocols are implemented separately.
+2. Their sender and receiver state machines behave correctly.
+3. The network impairment model is reproducible.
+4. The adaptive controller makes decisions using measured inputs.
+5. Controller decisions are logged and explained.
+6. Experiments can be repeated and compared fairly.
+7. The live UDP transfer mode transfers actual files.
+8. The reconstructed file passes SHA-256 verification.
+9. The dashboard displays real experiment results.
+10. The backend exposes working APIs.
+11. The test suite covers major protocol failure cases.
+12. Results can be exported.
+13. Simulation and live-transfer measurements are clearly distinguished.
+14. The application provides meaningful error messages.
+15. The README contains complete setup and run instructions.
+16. No experimental results or patent claims are fabricated.
+
+---
+
+# 22. FINAL DELIVERABLE
+
+Build AURA-BOLT as a functional Computer Networks research prototype with a polished dashboard, reliable transfer implementation, adaptive optimization, reproducible experiments, and complete technical documentation.
+
+Prioritize correctness, reliability, explainability, and scientific evaluation over decorative visual effects.
+
+Start by presenting the architecture, explaining the component interactions, and creating the initial repository structure. Then implement the project incrementally, beginning with the deterministic network simulator and protocol correctness tests.

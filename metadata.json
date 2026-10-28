@@ -1,0 +1,6 @@
+{
+  "name": "AURA-BOLT: Adaptive ARQ & Sliding Window Framework",
+  "description": "Burst-Aware Adaptive ARQ and Sliding Window Optimization for Reliable Data Transfer Under Dynamic Network Conditions with real UDP engine and deterministic simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
