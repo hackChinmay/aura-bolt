@@ -94,6 +94,7 @@ app.post('/api/experiments/compare', (req: Request, res: Response) => {
       { name: 'Stop-and-Wait ARQ', type: 'stop_and_wait', adaptive: false },
       { name: 'Go-Back-N ARQ', type: 'go_back_n', adaptive: false },
       { name: 'Selective Repeat ARQ', type: 'selective_repeat', adaptive: false },
+      { name: 'Simple Loss-Rate Adaptive', type: 'loss_rate_adaptive', adaptive: true },
       { name: 'AURA-BOLT (Adaptive Burst-Aware)', type: 'aura_bolt', adaptive: true },
     ];
 

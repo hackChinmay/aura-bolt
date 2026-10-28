@@ -16,7 +16,7 @@ import {
   PacketFrame,
   WindowSlot,
 } from './core/types';
-import { DEFAULT_CONFIG } from './core/presets';
+import { DEFAULT_CONFIG, EXPERIMENT_PRESETS } from './core/presets';
 import { SimulationEngine } from './core/simulation/engine';
 
 export function App() {
@@ -25,6 +25,7 @@ export function App() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [simTimeMs, setSimTimeMs] = useState<number>(0);
   const [executionMode, setExecutionMode] = useState<'simulation' | 'real_udp'>('simulation');
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
 
   // Active simulation engine instance ref
   const engineRef = useRef<SimulationEngine | null>(null);
@@ -55,6 +56,32 @@ export function App() {
 
   useEffect(() => {
     initEngine(config);
+
+    // WebSocket connection to backend
+    let ws: WebSocket | null = null;
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setWsConnected(true);
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    } catch {
+      setWsConnected(false);
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, []);
 
   // Update telemetry states from active engine
@@ -165,6 +192,7 @@ export function App() {
           executionMode={executionMode}
           onChangeExecutionMode={setExecutionMode}
           randomSeed={config.randomSeed}
+          wsConnected={wsConnected}
         />
 
         <main className="flex-1 overflow-y-auto bg-[#070b14]">
@@ -176,6 +204,16 @@ export function App() {
               isRunning={isRunning}
               decisions={decisions}
               onStartExperiment={handleToggleRun}
+              onSelectPreset={(presetId) => {
+                const preset = EXPERIMENT_PRESETS.find((p) => p.id === presetId);
+                if (preset) {
+                  handleChangeConfig({
+                    ...config,
+                    ...preset.config,
+                    name: preset.name,
+                  });
+                }
+              }}
             />
           )}
 

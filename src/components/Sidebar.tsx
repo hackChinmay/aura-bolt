@@ -36,9 +36,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Research Dashboard', icon: LayoutDashboard },
     { id: 'packet_lab', label: 'Live Packet Laboratory', icon: Radio },
     { id: 'comparison', label: 'Protocol Comparison', icon: BarChart3 },
-    { id: 'adaptive', label: 'Adaptive Controller', icon: Sliders },
+    { id: 'adaptive', label: 'Adaptive Controller Inspector', icon: Sliders },
     { id: 'builder', label: 'Experiment Builder', icon: FlaskConical },
-    { id: 'results', label: 'Results & Analysis', icon: FileSpreadsheet },
+    { id: 'results', label: 'Results and Research Analysis', icon: FileSpreadsheet },
     { id: 'docs', label: 'Research Documentation', icon: BookOpen },
   ];
 
@@ -47,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'stop_and_wait': return 'Stop-and-Wait';
       case 'go_back_n': return 'Go-Back-N';
       case 'selective_repeat': return 'Selective Repeat';
+      case 'loss_rate_adaptive': return 'Loss-Rate Adaptive';
       case 'aura_bolt': return 'AURA-BOLT (Adaptive)';
       default: return p;
     }

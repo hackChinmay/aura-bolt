@@ -10,6 +10,7 @@ interface HeaderProps {
   executionMode: 'simulation' | 'real_udp';
   onChangeExecutionMode: (mode: 'simulation' | 'real_udp') => void;
   randomSeed: number;
+  wsConnected?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   executionMode,
   onChangeExecutionMode,
   randomSeed,
+  wsConnected = false,
 }) => {
   const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
     dashboard: {
@@ -84,6 +86,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Real UDP Transfer
           </button>
+        </div>
+
+        {/* WS / Backend Status */}
+        <div className="hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 bg-slate-950/80 border border-slate-800 rounded font-mono">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              wsConnected ? 'bg-emerald-400' : 'bg-cyan-400'
+            }`}
+          />
+          <span className="text-slate-300">
+            {wsConnected ? 'WS TELEMETRY ONLINE' : 'SIM ENGINE READY'}
+          </span>
         </div>
 
         {/* Seed Info */}
