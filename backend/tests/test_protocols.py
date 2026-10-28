@@ -1,166 +1,177 @@
 """
-Automated Unit Tests for ARQ Protocols, Binary Packet Format, and Adaptive Controller
+Automated Unit Tests for ARQ Protocols and Binary Packet Format (Standard unittest).
 """
 
-import pytest
-import struct
+import unittest
 from app.protocols.stop_and_wait import StopAndWaitSender, StopAndWaitReceiver
 from app.protocols.go_back_n import GoBackNSender, GoBackNReceiver
 from app.protocols.selective_repeat import SelectiveRepeatSender, SelectiveRepeatReceiver
-from app.transfer.packet_format import encode_packet, decode_packet, compute_internet_checksum, MSG_DATA, MSG_ACK
+from app.transfer.packet_format import encode_packet, decode_packet, MSG_DATA, MSG_ACK
 
-def test_stop_and_wait_normal_flow():
-    sender = StopAndWaitSender(total_frames=3, initial_rto_ms=100)
-    receiver = StopAndWaitReceiver(total_expected_frames=3)
+class TestProtocolPrimitives(unittest.TestCase):
+    def test_stop_and_wait_normal_flow(self):
+        chunks = [b"Chunk0", b"Chunk1", b"Chunk2"]
+        sender = StopAndWaitSender(data_chunks=chunks, initial_rto_ms=100.0)
+        receiver = StopAndWaitReceiver(total_expected_frames=3)
 
-    # Frame 0
-    f0 = sender.on_send(0.0)
-    assert f0 is not None
-    assert f0["seq_number"] == 0
-    delivered, ack0, dup = receiver.on_frame_arrival(f0, 20.0)
-    assert delivered is True
-    assert dup is False
-    assert ack0["ack_number"] == 0
+        # Frame 0
+        f0 = sender.on_send(0.0)
+        self.assertIsNotNone(f0)
+        self.assertEqual(f0.seq_number, 0)
+        delivered, ack0, dup = receiver.on_frame_arrival(f0, 20.0)
+        self.assertTrue(delivered)
+        self.assertFalse(dup)
+        self.assertEqual(ack0.ack_number, 0)
 
-    valid, advanced = sender.on_ack_received(ack0["ack_number"], 40.0)
-    assert valid is True
-    assert advanced is True
+        valid, advanced = sender.on_ack_received(ack0, 40.0)
+        self.assertTrue(valid)
+        self.assertTrue(advanced)
 
-    # Frame 1
-    f1 = sender.on_send(45.0)
-    assert f1 is not None
-    assert f1["seq_number"] == 1
-    delivered, ack1, dup = receiver.on_frame_arrival(f1, 65.0)
-    assert delivered is True
-    sender.on_ack_received(ack1["ack_number"], 85.0)
+        # Frame 1
+        f1 = sender.on_send(45.0)
+        self.assertIsNotNone(f1)
+        self.assertEqual(f1.seq_number, 1)
+        delivered, ack1, dup = receiver.on_frame_arrival(f1, 65.0)
+        self.assertTrue(delivered)
+        sender.on_ack_received(ack1, 85.0)
 
-    # Frame 2 (alternating bit back to 0)
-    f2 = sender.on_send(90.0)
-    assert f2["seq_number"] == 0
-    receiver.on_frame_arrival(f2, 110.0)
-    sender.on_ack_received(0, 130.0)
+        # Frame 2 (alternating bit back to 0)
+        f2 = sender.on_send(90.0)
+        self.assertEqual(f2.seq_number, 0)
+        delivered2, ack2, _ = receiver.on_frame_arrival(f2, 110.0)
+        self.assertTrue(delivered2)
+        sender.on_ack_received(ack2, 130.0)
 
-    assert receiver.is_transfer_complete() is True
-    assert sender.is_completed is True
+        self.assertTrue(receiver.is_transfer_complete())
+        self.assertTrue(sender.is_completed)
+        self.assertEqual(receiver.get_reconstructed_data(), b"Chunk0Chunk1Chunk2")
 
-def test_stop_and_wait_timeout_and_duplicate():
-    sender = StopAndWaitSender(total_frames=2, initial_rto_ms=100)
-    receiver = StopAndWaitReceiver(total_expected_frames=2)
+    def test_stop_and_wait_timeout_and_duplicate(self):
+        chunks = [b"Frame0", b"Frame1"]
+        sender = StopAndWaitSender(data_chunks=chunks, initial_rto_ms=100.0)
+        receiver = StopAndWaitReceiver(total_expected_frames=2)
 
-    f0 = sender.on_send(0.0)
-    # Simulate packet loss: receiver never gets f0
-    # At t=105, timeout triggers
-    assert sender.check_timeout(50.0) is False
-    assert sender.check_timeout(105.0) is True
-    assert sender.retransmissions_count == 1
+        f0 = sender.on_send(0.0)
+        # Simulate packet loss: receiver never gets f0
+        # At t=105, timeout triggers
+        self.assertFalse(sender.check_timeout(50.0))
+        self.assertTrue(sender.check_timeout(105.0))
+        self.assertEqual(sender.retransmissions_count, 1)
 
-    # Retransmit f0
-    f0_retrans = sender.on_send(110.0)
-    delivered, ack0, dup = receiver.on_frame_arrival(f0_retrans, 130.0)
-    assert delivered is True
-    assert dup is False
+        # Retransmit f0
+        f0_retrans = sender.on_send(110.0)
+        delivered, ack0, dup = receiver.on_frame_arrival(f0_retrans, 130.0)
+        self.assertTrue(delivered)
+        self.assertFalse(dup)
 
-    # Simulate duplicate arrival of f0 (e.g. delayed duplicate in channel)
-    delivered_dup, ack_dup, is_dup = receiver.on_frame_arrival(f0_retrans, 135.0)
-    assert delivered_dup is False
-    assert is_dup is True
-    assert ack_dup["ack_number"] == 0
+        # Simulate duplicate arrival of f0 (delayed duplicate in channel)
+        delivered_dup, ack_dup, is_dup = receiver.on_frame_arrival(f0_retrans, 135.0)
+        self.assertFalse(delivered_dup)
+        self.assertTrue(is_dup)
+        self.assertEqual(ack_dup.ack_number, 0)
 
-def test_go_back_n_cumulative_ack():
-    sender = GoBackNSender(total_frames=5, window_size=4, modulus=16, initial_rto_ms=200)
-    receiver = GoBackNReceiver(total_expected_frames=5, modulus=16)
+    def test_go_back_n_cumulative_ack(self):
+        chunks = [b"A", b"B", b"C", b"D", b"E"]
+        sender = GoBackNSender(data_chunks=chunks, window_size=4, modulus=16, initial_rto_ms=200.0)
+        receiver = GoBackNReceiver(total_expected_frames=5, modulus=16)
 
-    # Sender transmits frames 0, 1, 2
-    f0 = sender.on_send(0.0)
-    f1 = sender.on_send(5.0)
-    f2 = sender.on_send(10.0)
-    assert f0 and f1 and f2
+        # Sender transmits frames 0, 1, 2
+        f0 = sender.on_send(0.0)
+        f1 = sender.on_send(5.0)
+        f2 = sender.on_send(10.0)
+        self.assertTrue(f0 and f1 and f2)
 
-    # Receiver receives 0 and 1
-    receiver.on_frame_arrival(f0, 25.0)
-    _, ack1, _ = receiver.on_frame_arrival(f1, 30.0)
+        # Receiver receives 0 and 1
+        receiver.on_frame_arrival(f0, 25.0)
+        _, ack1, _ = receiver.on_frame_arrival(f1, 30.0)
 
-    # Cumulative ACK 1 acknowledges both frame 0 and 1!
-    valid, count = sender.on_cumulative_ack(1, 55.0)
-    assert valid is True
-    assert count == 2
-    assert sender.base_index == 2
+        # Cumulative ACK 1 acknowledges both frame 0 and 1!
+        valid, count = sender.on_cumulative_ack(ack1, 55.0)
+        self.assertTrue(valid)
+        self.assertEqual(count, 2)
+        self.assertEqual(sender.base_index, 2)
 
-def test_go_back_n_out_of_order_discard():
-    receiver = GoBackNReceiver(total_expected_frames=4, modulus=16)
-    # Frame 0 is lost, frame 1 arrives out of order
-    f1 = {"seq_number": 1}
-    delivered, ack, is_discarded = receiver.on_frame_arrival(f1, 30.0)
-    # GBN must reject frame 1 because it expects frame 0
-    assert delivered is False
-    assert is_discarded is True
-    # Receiver repeats ACK for the last in-order frame (or sentinel)
-    assert ack["ack_number"] == 15
+    def test_go_back_n_out_of_order_discard(self):
+        chunks = [b"F0", b"F1", b"F2"]
+        sender = GoBackNSender(data_chunks=chunks, window_size=3, modulus=16)
+        receiver = GoBackNReceiver(total_expected_frames=3, modulus=16)
 
-def test_selective_repeat_out_of_order_buffering():
-    sender = SelectiveRepeatSender(total_frames=5, window_size=4, modulus=16, initial_rto_ms=200)
-    receiver = SelectiveRepeatReceiver(total_expected_frames=5, window_size=4, modulus=16)
+        # Frame 0 is lost, frame 1 arrives out of order
+        sender.on_send(0.0)
+        f1 = sender.on_send(5.0)
+        delivered, ack, is_discarded = receiver.on_frame_arrival(f1, 30.0)
+        # GBN must reject frame 1 because it expects frame 0
+        self.assertFalse(delivered)
+        self.assertTrue(is_discarded)
+        # Receiver repeats ACK for the last in-order frame (sentinel 15)
+        self.assertEqual(ack.ack_number, 15)
 
-    f0 = sender.on_send(0.0)
-    f1 = sender.on_send(5.0)
-    f2 = sender.on_send(10.0)
+    def test_selective_repeat_out_of_order_buffering(self):
+        chunks = [b"P0", b"P1", b"P2", b"P3"]
+        sender = SelectiveRepeatSender(data_chunks=chunks, window_size=4, modulus=16, initial_rto_ms=200.0)
+        receiver = SelectiveRepeatReceiver(total_expected_frames=4, window_size=4, modulus=16)
 
-    # Frame 0 is delayed; frame 1 arrives first
-    del1, ack1, count1 = receiver.on_frame_arrival(f1, 25.0)
-    # Frame 1 is accepted into out-of-order buffer, but 0 frames delivered to app yet
-    assert del1 is True
-    assert count1 == 0
-    assert len(receiver.buffer) == 1
+        f0 = sender.on_send(0.0)
+        f1 = sender.on_send(5.0)
+        f2 = sender.on_send(10.0)
 
-    # Frame 2 arrives next
-    del2, ack2, count2 = receiver.on_frame_arrival(f2, 30.0)
-    assert del2 is True
-    assert count2 == 0
-    assert len(receiver.buffer) == 2
+        # Frame 0 is delayed; frame 1 arrives first
+        del1, ack1, count1 = receiver.on_frame_arrival(f1, 25.0)
+        self.assertTrue(del1)
+        self.assertEqual(count1, 0)
+        self.assertEqual(len(receiver.buffer), 1)
 
-    # Now the missing frame 0 arrives!
-    del0, ack0, count0 = receiver.on_frame_arrival(f0, 35.0)
-    assert del0 is True
-    # Frame 0 arrival allows delivering frames 0, 1, and 2 in order (3 frames delivered at once)
-    assert count0 == 3
-    assert len(receiver.buffer) == 0
-    assert receiver.total_delivered == 3
+        # Frame 2 arrives next
+        del2, ack2, count2 = receiver.on_frame_arrival(f2, 30.0)
+        self.assertTrue(del2)
+        self.assertEqual(count2, 0)
+        self.assertEqual(len(receiver.buffer), 2)
 
-def test_selective_repeat_window_safety_invariant():
-    # Modulus M = 16. Selective Repeat requires W <= M // 2 (i.e. W <= 8)
-    # If caller requests window 12, it must be capped at 8 to prevent aliasing
-    sender = SelectiveRepeatSender(total_frames=20, window_size=12, modulus=16)
-    assert sender.window_size == 8
+        # Now the missing frame 0 arrives!
+        del0, ack0, count0 = receiver.on_frame_arrival(f0, 35.0)
+        self.assertTrue(del0)
+        # Frame 0 arrival allows delivering frames 0, 1, and 2 in order (3 frames delivered at once)
+        self.assertEqual(count0, 3)
+        self.assertEqual(len(receiver.buffer), 0)
+        self.assertEqual(receiver.total_delivered, 3)
+        self.assertEqual(receiver.get_reconstructed_data(), b"P0P1P2")
 
-def test_binary_packet_format_and_checksum():
-    payload = b"Hello, AURA-BOLT Protocol Research Team!"
-    encoded = encode_packet(
-        version=1,
-        msg_type=MSG_DATA,
-        flags=0,
-        seq_number=42,
-        ack_number=10,
-        window_size=16,
-        session_id=9999,
-        timestamp_micros=123456789,
-        payload=payload,
-    )
-    assert len(encoded) == 32 + len(payload)
+    def test_selective_repeat_window_safety_invariant(self):
+        # Modulus M = 16. Selective Repeat requires W <= M // 2 (i.e. W <= 8)
+        sender = SelectiveRepeatSender([b"data"] * 10, window_size=12, modulus=16)
+        self.assertEqual(sender.window_size, 8)
 
-    # Decode and verify
-    result = decode_packet(encoded)
-    assert result is not None
-    header, decoded_payload, is_valid = result
-    assert is_valid is True
-    assert header["seq_number"] == 42
-    assert header["ack_number"] == 10
-    assert header["window_size"] == 16
-    assert decoded_payload == payload
+    def test_binary_packet_format_and_checksum(self):
+        payload = b"Hello, AURA-BOLT Protocol Research Team!"
+        encoded = encode_packet(
+            version=1,
+            msg_type=MSG_DATA,
+            flags=0,
+            seq_number=42,
+            ack_number=10,
+            window_size=16,
+            session_id=9999,
+            timestamp_micros=123456789,
+            payload=payload,
+        )
+        self.assertEqual(len(encoded), 32 + len(payload))
 
-    # Test intentional single-bit corruption
-    corrupted = bytearray(encoded)
-    corrupted[35] ^= 0x01  # Flip one bit in payload
-    corrupted_result = decode_packet(bytes(corrupted))
-    assert corrupted_result is not None
-    _, _, is_valid_after_flip = corrupted_result
-    assert is_valid_after_flip is False  # Checksum detection caught bit flip!
+        result = decode_packet(encoded)
+        self.assertIsNotNone(result)
+        header, decoded_payload, is_valid = result
+        self.assertTrue(is_valid)
+        self.assertEqual(header["seq_number"], 42)
+        self.assertEqual(header["ack_number"], 10)
+        self.assertEqual(header["window_size"], 16)
+        self.assertEqual(decoded_payload, payload)
+
+        # Flip one bit in payload to test checksum detection
+        corrupted = bytearray(encoded)
+        corrupted[35] ^= 0x01
+        corrupted_result = decode_packet(bytes(corrupted))
+        self.assertIsNotNone(corrupted_result)
+        _, _, is_valid_after_flip = corrupted_result
+        self.assertFalse(is_valid_after_flip)
+
+if __name__ == "__main__":
+    unittest.main()

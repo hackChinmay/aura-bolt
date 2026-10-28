@@ -10,12 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.protocols.stop_and_wait import StopAndWaitSender, StopAndWaitReceiver
-from app.protocols.go_back_n import GoBackNSender, GoBackNReceiver
-from app.protocols.selective_repeat import SelectiveRepeatSender, SelectiveRepeatReceiver
-from app.simulation.channel import ImpairmentChannel
-from app.adaptive.burst_detector import BurstDetectorAndRttEstimator
-from app.adaptive.controller import AuraBoltController
+from app.simulation.engine import SimulationEngine
 
 app = FastAPI(
     title="AURA-BOLT Protocol Framework",
@@ -94,116 +89,44 @@ def health_check():
 @app.post("/api/experiments/run")
 def run_simulation(req: ExperimentRequest):
     exp_id = req.id or f"py-exp-{int(time.time()*1000)}"
-    channel = ImpairmentChannel(
-        seed=req.random_seed,
+    
+    # Generate data payload
+    data_payload = (b"AURA-BOLT Protocol Test Chunk Payload " * max(1, req.total_frames))[:req.total_frames * 1024]
+    
+    engine = SimulationEngine(
+        protocol=req.protocol,
+        data_to_send=data_payload,
+        chunk_size=1024,
+        window_size=req.initial_window_size,
+        modulus=64,
         one_way_delay_ms=req.one_way_delay_ms,
         jitter_ms=req.jitter_ms,
         packet_loss_rate=req.packet_loss_rate,
         ack_loss_rate=req.ack_loss_rate,
         loss_pattern=req.loss_pattern,
-    )
-
-    burst_detector = BurstDetectorAndRttEstimator(
-        initial_rtt_ms=req.one_way_delay_ms * 2,
         initial_rto_ms=req.initial_rto_ms,
+        random_seed=req.random_seed,
     )
 
-    controller = AuraBoltController(
-        receiver_buffer_size=req.receiver_buffer_size,
-        enable_burst_awareness=req.enable_burst_awareness,
-    )
-
-    # Initialize requested protocol
-    if req.protocol == "stop_and_wait":
-        sender = StopAndWaitSender(req.total_frames, req.initial_rto_ms)
-        receiver = StopAndWaitReceiver(req.total_frames)
-    elif req.protocol == "go_back_n":
-        sender = GoBackNSender(req.total_frames, req.initial_window_size, 64, req.initial_rto_ms)
-        receiver = GoBackNReceiver(req.total_frames, 64)
-    else:
-        # Selective Repeat or AURA-BOLT
-        sender = SelectiveRepeatSender(req.total_frames, req.initial_window_size, 64, req.initial_rto_ms)
-        receiver = SelectiveRepeatReceiver(req.total_frames, req.initial_window_size, 64)
-
-    sim_time = 0.0
-    frames_sent = 0
-    retransmissions = 0
-    acks_sent = 0
-    packets_lost = 0
-    latencies = []
-    delivered_bytes = 0
-
-    # Event loop (simplified for synchronous evaluation)
-    while not receiver.is_transfer_complete() and sim_time < 30000:
-        sim_time += 15.0  # Time step
-
-        # Sender pumps frame
-        if sender.can_send():
-            f = sender.on_send(sim_time)
-            if f:
-                frames_sent += 1
-                if f.get("is_retransmission"):
-                    retransmissions += 1
-
-                drop, reason = channel.should_drop_data(sim_time)
-                if drop:
-                    packets_lost += 1
-                    burst_detector.record_outcome(False)
-                else:
-                    burst_detector.record_outcome(True)
-                    delivered, ack, _ = receiver.on_frame_arrival(f, sim_time)
-                    if delivered:
-                        delivered_bytes += 1024
-                        latencies.append(channel.calculate_transit_delay_ms() * 2)
-
-                    # Return ACK
-                    ack_drop, _ = channel.should_drop_ack()
-                    if not ack_drop:
-                        acks_sent += 1
-                        if req.protocol == "stop_and_wait":
-                            sender.on_ack_received(ack["ack_number"], sim_time)
-                        elif req.protocol == "go_back_n":
-                            sender.on_cumulative_ack(ack["ack_number"], sim_time)
-                        else:
-                            sender.on_individual_ack(ack["ack_number"], sim_time)
-
-        # Check timeouts
-        if req.protocol == "stop_and_wait":
-            if sender.check_timeout(sim_time):
-                burst_detector.on_timeout_backoff()
-        elif req.protocol == "go_back_n":
-            if sender.check_timeout(sim_time):
-                burst_detector.on_timeout_backoff()
-        else:
-            if sender.check_timeouts(sim_time) > 0:
-                burst_detector.on_timeout_backoff()
-
-        # Controller evaluate
-        if req.protocol == "aura_bolt" and int(sim_time) % 250 == 0:
-            stats = burst_detector.get_stats()
-            measured_goodput = (delivered_bytes * 8) / (max(0.1, sim_time / 1000.0) * 1000.0)
-            dec = controller.evaluate(
-                sim_time,
-                sender.window_size,
-                sender.current_rto_ms,
-                stats,
-                measured_goodput,
-            )
-            sender.window_size = dec["selected_window"]
-            sender.current_rto_ms = dec["selected_rto"]
-
-    duration_sec = max(0.001, sim_time / 1000.0)
-    goodput_kbps = round((delivered_bytes * 8) / (duration_sec * 1000.0), 1)
-    retrans_ratio = round(retransmissions / frames_sent, 3) if frames_sent > 0 else 0.0
-    latencies.sort()
-    p95_lat = latencies[int(len(latencies) * 0.95)] if latencies else 0.0
+    result = engine.run_all()
+    metrics = result["metrics"]
 
     # Store in SQLite
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO experiments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (exp_id, req.protocol, req.total_frames, req.packet_loss_rate, req.one_way_delay_ms, goodput_kbps, p95_lat, retrans_ratio, time.time())
+        (
+            exp_id,
+            req.protocol,
+            req.total_frames,
+            req.packet_loss_rate,
+            req.one_way_delay_ms,
+            metrics["goodput_kbps"],
+            metrics["latency_stats"]["p95_ms"],
+            metrics["retransmission_ratio"],
+            time.time(),
+        )
     )
     conn.commit()
     conn.close()
@@ -212,15 +135,21 @@ def run_simulation(req: ExperimentRequest):
         "success": True,
         "experiment_id": exp_id,
         "protocol": req.protocol,
-        "duration_ms": round(sim_time, 1),
-        "total_frames_sent": frames_sent,
-        "total_retransmissions": retransmissions,
-        "retransmission_ratio": retrans_ratio,
-        "packets_lost": packets_lost,
-        "acks_sent": acks_sent,
-        "goodput_kbps": goodput_kbps,
-        "p95_latency_ms": round(p95_lat, 1),
-        "decisions_count": len(controller.decision_history),
+        "is_completed": result["is_completed"],
+        "duration_ms": metrics["duration_ms"],
+        "total_data_frames_sent": metrics["total_data_frames_sent"],
+        "total_retransmissions": metrics["total_retransmissions"],
+        "retransmission_ratio": metrics["retransmission_ratio"],
+        "packets_lost": metrics["total_packets_lost"],
+        "acks_sent": metrics["total_acks_sent"],
+        "goodput_kbps": metrics["goodput_kbps"],
+        "transmission_throughput_kbps": metrics["transmission_throughput_kbps"],
+        "p95_latency_ms": metrics["latency_stats"]["p95_ms"],
+        "mean_latency_ms": metrics["latency_stats"]["mean_ms"],
+        "integrity_verified": metrics["integrity_verified"],
+        "original_sha256": metrics["original_sha256"],
+        "reconstructed_sha256": metrics["reconstructed_sha256"],
+        "total_events": result["total_events"],
     }
 
 @app.get("/api/experiments")
