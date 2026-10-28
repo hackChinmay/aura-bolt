@@ -6,11 +6,12 @@ Provides endpoints for experiments, simulation execution, telemetry, and CSV exp
 import time
 import sqlite3
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.simulation.engine import SimulationEngine
+from app.experiments.benchmark import run_four_protocol_comparison, run_ablation_study
 
 app = FastAPI(
     title="AURA-BOLT Protocol Framework",
@@ -173,3 +174,55 @@ def list_experiments():
         }
         for r in rows
     ]
+
+class BenchmarkRequest(BaseModel):
+    loss_rate: float = 0.08
+    delay_ms: float = 30.0
+    jitter_ms: float = 4.0
+    seed: int = 1234
+
+@app.post("/api/experiments/benchmark")
+def run_benchmark(req: BenchmarkRequest):
+    return run_four_protocol_comparison(
+        loss_rate=req.loss_rate,
+        delay_ms=req.delay_ms,
+        jitter_ms=req.jitter_ms,
+        seed=req.seed,
+    )
+
+class AblationRequest(BaseModel):
+    seed: int = 42
+
+@app.post("/api/experiments/ablation")
+def run_ablation(req: AblationRequest):
+    return run_ablation_study(seed=req.seed)
+
+@app.get("/api/experiments/{experiment_id}/export")
+def export_experiment_csv(experiment_id: str):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM experiments WHERE id = ?", (experiment_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    csv_data = [
+        "Metric,Value,Unit",
+        f"ExperimentID,{row[0]},Identifier",
+        f"Protocol,{row[1]},String",
+        f"TotalFrames,{row[2]},Count",
+        f"LossRate,{row[3]},Ratio",
+        f"OneWayDelayMs,{row[4]},Milliseconds",
+        f"GoodputKbps,{row[5]},Kbps",
+        f"P95LatencyMs,{row[6]},Milliseconds",
+        f"RetransmissionRatio,{row[7]},Ratio",
+        f"CreatedAt,{row[8]},Timestamp",
+    ]
+    csv_str = "\n".join(csv_data)
+    return Response(
+        content=csv_str,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="aura-bolt-exp-{experiment_id}.csv"'},
+    )

@@ -126,6 +126,66 @@ app.post('/api/experiments/compare', (req: Request, res: Response) => {
   }
 });
 
+// Run Ablation Study (Burst-Awareness ON vs OFF)
+app.post('/api/experiments/ablation', (req: Request, res: Response) => {
+  try {
+    const seed = req.body?.seed ?? 42;
+    const channels = [
+      { name: 'Correlated Burst Loss Channel', pattern: 'burst' as const, lossRate: 0.12 },
+      { name: 'Independent Bernoulli Channel', pattern: 'random' as const, lossRate: 0.08 },
+    ];
+
+    const comparisons = channels.map(ch => {
+      const cfgOn: ExperimentConfig = {
+        ...DEFAULT_CONFIG,
+        id: `ablation-on-${Date.now()}-${Math.random()}`,
+        protocol: 'aura_bolt',
+        isAdaptive: true,
+        enableBurstAwareness: true,
+        lossPattern: ch.pattern,
+        packetLossRate: ch.lossRate,
+        randomSeed: seed,
+      };
+      const engOn = new SimulationEngine(cfgOn);
+      const sumOn = engOn.runAll();
+
+      const cfgOff: ExperimentConfig = {
+        ...DEFAULT_CONFIG,
+        id: `ablation-off-${Date.now()}-${Math.random()}`,
+        protocol: 'aura_bolt',
+        isAdaptive: true,
+        enableBurstAwareness: false,
+        lossPattern: ch.pattern,
+        packetLossRate: ch.lossRate,
+        randomSeed: seed,
+      };
+      const engOff = new SimulationEngine(cfgOff);
+      const sumOff = engOff.runAll();
+
+      const reduction = sumOff.totalRetransmissions > 0
+        ? Math.round(((sumOff.totalRetransmissions - sumOn.totalRetransmissions) / sumOff.totalRetransmissions) * 1000) / 1000
+        : 0;
+
+      return {
+        channelType: ch.name,
+        lossPattern: ch.pattern,
+        burstAwareOn: sumOn,
+        burstAwareOff: sumOff,
+        retransmissionReductionRatio: reduction,
+      };
+    });
+
+    res.json({
+      success: true,
+      seed,
+      ablationComparisons: comparisons,
+    });
+  } catch (err: any) {
+    console.error('Ablation study failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Real UDP Socket File Transfer Endpoint
 app.post('/api/udp-transfer/start', async (req: Request, res: Response) => {
   try {

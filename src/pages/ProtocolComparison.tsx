@@ -34,9 +34,10 @@ export const ProtocolComparison: React.FC<ProtocolComparisonProps> = ({ baseConf
     setTimeout(() => {
       const protocols = [
         { name: 'Stop-and-Wait', key: 'stop_and_wait', adaptive: false },
-        { name: 'Go-Back-N', key: 'go_back_n', adaptive: false },
-        { name: 'Selective Repeat', key: 'selective_repeat', adaptive: false },
-        { name: 'AURA-BOLT (Adaptive)', key: 'aura_bolt', adaptive: true },
+        { name: 'Fixed Go-Back-N', key: 'go_back_n', adaptive: false },
+        { name: 'Fixed Selective Repeat', key: 'selective_repeat', adaptive: false },
+        { name: 'Simple Loss-Rate Adaptive', key: 'loss_rate_adaptive', adaptive: true },
+        { name: 'AURA-BOLT (Burst-Aware)', key: 'aura_bolt', adaptive: true },
       ];
 
       const results: BenchmarkItem[] = protocols.map((p) => {
@@ -60,6 +61,10 @@ export const ProtocolComparison: React.FC<ProtocolComparisonProps> = ({ baseConf
     }, 150);
   };
 
+  const maxGoodput = benchmarks.length > 0
+    ? Math.max(...benchmarks.map((b) => b.summary.finalGoodputKbps))
+    : 0;
+
   const chartData = benchmarks.map((b) => ({
     name: b.name,
     goodput: b.summary.finalGoodputKbps,
@@ -74,9 +79,9 @@ export const ProtocolComparison: React.FC<ProtocolComparisonProps> = ({ baseConf
       {/* Benchmark Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded p-4">
         <div>
-          <h2 className="text-base font-semibold text-white">4-Way Protocol Evaluation Suite</h2>
+          <h2 className="text-base font-semibold text-white">5-Way Empirical Protocol Evaluation Suite</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Executes Stop-and-Wait, Go-Back-N, Selective Repeat, and AURA-BOLT against identical channel impairment seeds.
+            Executes Stop-and-Wait, Go-Back-N, Selective Repeat, Simple Loss-Rate Adaptive, and AURA-BOLT against identical channel impairment seeds.
           </p>
         </div>
 
@@ -91,14 +96,14 @@ export const ProtocolComparison: React.FC<ProtocolComparisonProps> = ({ baseConf
       </div>
 
       {/* Comparison Grid Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {benchmarks.length === 0 ? (
-          <div className="col-span-4 bg-slate-900/50 border border-slate-800 rounded p-8 text-center text-slate-500 text-xs italic">
-            Click 'Run Comparative Benchmark' above to simulate and rank all four protocols under identical network conditions.
+          <div className="col-span-5 bg-slate-900/50 border border-slate-800 rounded p-8 text-center text-slate-500 text-xs italic">
+            Click 'Run Comparative Benchmark' above to simulate and rank all protocols under identical network conditions.
           </div>
         ) : (
           benchmarks.map((item, idx) => {
-            const isWinner = item.protocolKey === 'aura_bolt';
+            const isWinner = item.summary.finalGoodputKbps === maxGoodput && maxGoodput > 0;
             return (
               <div
                 key={item.protocolKey}

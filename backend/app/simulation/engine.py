@@ -1,6 +1,7 @@
 """
 Deterministic Event-Driven Network Simulation Engine.
 Drives sender, receiver, and impairment channel across discrete simulation time.
+Integrates AURA-BOLT Adaptive Controller and baseline controllers on top of tested ARQ engines.
 """
 
 from typing import List, Dict, Any, Optional, Union
@@ -12,6 +13,9 @@ from app.protocols.selective_repeat import SelectiveRepeatSender, SelectiveRepea
 from app.simulation.channel import ImpairmentChannel
 from app.simulation.event_scheduler import EventScheduler, EventType, Event
 from app.metrics.calculations import calculate_metrics
+from app.adaptive.burst_detector import BurstDetectorAndRttEstimator
+from app.adaptive.controller import AuraBoltAdaptiveController
+from app.adaptive.baselines import LossRateAdaptiveController
 
 class SimulationEngine:
     def __init__(
@@ -29,6 +33,14 @@ class SimulationEngine:
         p_good_to_bad: float = 0.12,
         p_bad_to_bad: float = 0.70,
         initial_rto_ms: float = 300.0,
+        receiver_buffer_size: int = 24,
+        max_window_size: int = 32,
+        alpha: float = 0.40,
+        beta: float = 0.25,
+        gamma: float = 0.20,
+        delta: float = 0.15,
+        enable_burst_awareness: bool = True,
+        decision_interval_ms: float = 150.0,
         random_seed: int = 42,
     ):
         self.protocol = protocol.lower()
@@ -46,6 +58,9 @@ class SimulationEngine:
         self.total_chunks = len(self.chunks)
         self.random_seed = random_seed
         self.initial_rto_ms = initial_rto_ms
+        self.receiver_buffer_size = receiver_buffer_size
+        self.max_window_size = max_window_size
+        self.enable_burst_awareness = enable_burst_awareness
 
         # Impairment channel & event scheduler
         self.channel = ImpairmentChannel(
@@ -84,11 +99,40 @@ class SimulationEngine:
         elif self.protocol == "go_back_n":
             self.sender = GoBackNSender(self.chunks, window_size=window_size, modulus=modulus, initial_rto_ms=initial_rto_ms)
             self.receiver = GoBackNReceiver(self.total_chunks, modulus=modulus)
-        elif self.protocol in ("selective_repeat", "aura_bolt"):
+        elif self.protocol in ("selective_repeat", "aura_bolt", "loss_rate_adaptive"):
             self.sender = SelectiveRepeatSender(self.chunks, window_size=window_size, modulus=modulus, initial_rto_ms=initial_rto_ms)
-            self.receiver = SelectiveRepeatReceiver(self.total_chunks, window_size=window_size, modulus=modulus)
+            self.receiver = SelectiveRepeatReceiver(self.total_chunks, window_size=receiver_buffer_size, modulus=modulus)
         else:
             raise ValueError(f"Unknown protocol: {protocol}")
+
+        # Adaptive components
+        self.burst_detector = BurstDetectorAndRttEstimator(
+            initial_rtt_ms=one_way_delay_ms * 2.0,
+            initial_rto_ms=initial_rto_ms,
+        )
+        self.controller: Optional[Union[AuraBoltAdaptiveController, LossRateAdaptiveController]] = None
+
+        if self.protocol == "aura_bolt":
+            self.controller = AuraBoltAdaptiveController(
+                alpha=alpha,
+                beta=beta,
+                gamma=gamma,
+                delta=delta,
+                receiver_buffer_size=receiver_buffer_size,
+                seq_number_modulus=modulus,
+                max_window_size=max_window_size,
+                enable_burst_awareness=enable_burst_awareness,
+                decision_interval_ms=decision_interval_ms,
+            )
+            # Schedule periodic evaluation
+            self.scheduler.schedule(decision_interval_ms, EventType.METRIC_SAMPLE)
+        elif self.protocol == "loss_rate_adaptive":
+            self.controller = LossRateAdaptiveController(
+                min_window=1,
+                max_window=min(receiver_buffer_size, modulus // 2),
+                decision_interval_ms=decision_interval_ms,
+            )
+            self.scheduler.schedule(decision_interval_ms, EventType.METRIC_SAMPLE)
 
         # Schedule initial pump and periodic timer check
         self.scheduler.schedule(0.0, EventType.TIMEOUT_CHECK)
@@ -116,6 +160,7 @@ class SimulationEngine:
                 self.total_packets_lost += 1
                 frame.status = FrameStatus.LOST
                 frame.loss_reason = drop_reason
+                self.burst_detector.record_transmission_outcome(False)
                 self.events_history.append(frame.to_dict())
             else:
                 # Schedule frame arrival at receiver
@@ -166,6 +211,12 @@ class SimulationEngine:
         ack_frame.arrived_at = sim_time
         ack_frame.status = FrameStatus.ACKED
 
+        # Record Karn's RTT sample
+        rtt_sample = max(1.0, sim_time - ack_frame.sent_at)
+        self.burst_detector.record_rtt_sample(rtt_sample, is_retransmission=ack_frame.is_retransmission)
+        self.burst_detector.record_transmission_outcome(True)
+        self.burst_detector.record_delivered_payload(self.chunk_size, sim_time)
+
         if isinstance(self.sender, StopAndWaitSender):
             self.sender.on_ack_received(ack_frame, sim_time)
         elif isinstance(self.sender, GoBackNSender):
@@ -188,6 +239,7 @@ class SimulationEngine:
             retransmitted = (self.sender.check_timeouts(sim_time) > 0)
 
         if retransmitted:
+            self.burst_detector.on_timeout_backoff()
             self.pump_sender()
 
         # Check if complete
@@ -198,6 +250,34 @@ class SimulationEngine:
 
         # Reschedule next check in 25ms virtual simulation time
         self.scheduler.schedule(25.0, EventType.TIMEOUT_CHECK)
+
+    def _handle_adaptive_evaluation(self):
+        """Periodically evaluates adaptive controller and updates window & RTO."""
+        sim_time = self.get_sim_time()
+        if self.controller and isinstance(self.sender, SelectiveRepeatSender):
+            stats = self.burst_detector.get_burst_statistics(self.chunk_size)
+            elapsed_sec = max(0.001, sim_time / 1000.0)
+            measured_goodput_kbps = (self.total_bytes_delivered * 8.0) / (elapsed_sec * 1000.0)
+
+            eval_res = self.controller.evaluate(
+                sim_time_ms=sim_time,
+                current_window=self.sender.window_size,
+                current_rto=self.sender.current_rto_ms,
+                stats=stats,
+                measured_goodput_kbps=measured_goodput_kbps,
+            )
+
+            if eval_res.get("decision_made"):
+                new_w = eval_res["new_window"]
+                new_rto = eval_res["new_rto"]
+                self.sender.set_window_size(new_w)
+                self.sender.current_rto_ms = new_rto
+                if isinstance(self.receiver, SelectiveRepeatReceiver):
+                    self.receiver.window_size = min(self.receiver_buffer_size, self.sender.modulus // 2)
+                self.pump_sender()
+
+        if not self.is_completed:
+            self.scheduler.schedule(150.0, EventType.METRIC_SAMPLE)
 
     def step(self) -> Optional[Event]:
         """Process next discrete event from priority queue."""
@@ -214,6 +294,8 @@ class SimulationEngine:
             self._handle_ack_arrival(event.data)
         elif event.event_type == EventType.TIMEOUT_CHECK:
             self._handle_timeout_check()
+        elif event.event_type == EventType.METRIC_SAMPLE:
+            self._handle_adaptive_evaluation()
 
         self.pump_sender()
 
@@ -253,10 +335,19 @@ class SimulationEngine:
             reconstructed_sha256=reconstructed_sha256,
         )
 
+        audit_trail = []
+        if self.controller:
+            audit_trail = self.controller.get_audit_trail() if hasattr(self.controller, "get_audit_trail") else self.controller.decision_history
+
+        burst_stats = self.burst_detector.get_burst_statistics(self.chunk_size)
+
         return {
             "protocol": self.protocol,
             "is_completed": self.is_completed,
             "metrics": metrics,
+            "burst_statistics": burst_stats,
+            "decisions": audit_trail,
+            "decisions_count": len(audit_trail),
             "total_events": len(self.events_history),
             "reconstructed_bytes_len": len(reconstructed_data),
         }

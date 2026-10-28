@@ -1,6 +1,6 @@
 // AURA-BOLT Protocol and Simulation Core Types
 
-export type ProtocolType = 'stop_and_wait' | 'go_back_n' | 'selective_repeat' | 'aura_bolt';
+export type ProtocolType = 'stop_and_wait' | 'go_back_n' | 'selective_repeat' | 'aura_bolt' | 'loss_rate_adaptive';
 
 export type FrameType = 'DATA' | 'ACK' | 'NACK' | 'SYN' | 'FIN' | 'RST';
 

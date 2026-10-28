@@ -116,6 +116,7 @@ export class SimulationEngine {
 
       case 'selective_repeat':
       case 'aura_bolt':
+      case 'loss_rate_adaptive':
         this.srSender = new SelectiveRepeatSender(totalFrames, this.currentWindowSize, seqNumberModulus, initialRtoMs);
         this.srReceiver = new SelectiveRepeatReceiver(totalFrames, this.currentWindowSize, seqNumberModulus);
         break;
@@ -124,7 +125,7 @@ export class SimulationEngine {
     // Schedule initial transmissions and periodic checks
     this.scheduleEvent(0, 'CHECK_TIMEOUTS');
     this.scheduleEvent(50, 'SAMPLE_METRICS');
-    if (this.config.protocol === 'aura_bolt') {
+    if (this.config.protocol === 'aura_bolt' || this.config.protocol === 'loss_rate_adaptive') {
       this.scheduleEvent(200, 'CONTROLLER_EVALUATE');
     }
   }
@@ -325,9 +326,30 @@ export class SimulationEngine {
 
   // Periodic controller evaluation (AURA-BOLT only)
   private handleControllerEvaluate() {
-    if (this.config.protocol === 'aura_bolt' && this.srSender && this.srReceiver) {
+    if ((this.config.protocol === 'aura_bolt' || this.config.protocol === 'loss_rate_adaptive') && this.srSender && this.srReceiver) {
       const rttData = this.burstDetector.getRttEstimates();
       const burstStats = this.burstDetector.getBurstStatistics(this.config.payloadSize);
+
+      if (this.config.protocol === 'loss_rate_adaptive') {
+        const recentLoss = burstStats.recentLossRate;
+        const maxSafe = Math.min(this.config.receiverBufferSize, Math.floor(this.config.seqNumberModulus / 2));
+        let nextW = this.currentWindowSize;
+        if (recentLoss > 0.08) {
+          nextW = Math.max(1, Math.floor(this.currentWindowSize / 2));
+        } else {
+          nextW = Math.min(maxSafe, this.currentWindowSize + 1);
+        }
+        this.currentWindowSize = nextW;
+        this.srSender.setWindowSize(nextW);
+        this.srSender.currentRtoMs = rttData.rto;
+        this.srReceiver.windowSize = Math.min(this.config.receiverBufferSize, Math.floor(this.config.seqNumberModulus / 2));
+        this.pumpSender();
+        if (!this.isCompleted) {
+          this.scheduleEvent(this.simTimeMs + 250, 'CONTROLLER_EVALUATE');
+        }
+        return;
+      }
+
       const receiverBufferOccupancy = this.srReceiver.getBufferOccupancy();
       const windowUtil = this.currentWindowSize > 0
         ? Math.min(1.0, this.srSender.frameTable.size / this.currentWindowSize)
@@ -356,7 +378,8 @@ export class SimulationEngine {
         // Apply new window and RTO to Selective Repeat engine
         this.srSender.setWindowSize(this.currentWindowSize);
         this.srSender.currentRtoMs = this.currentRtoMs;
-        this.srReceiver.windowSize = this.currentWindowSize;
+        // Keep receiver window size safe and bound to receiverBufferSize
+        this.srReceiver.windowSize = Math.min(this.config.receiverBufferSize, Math.floor(this.config.seqNumberModulus / 2));
 
         this.pumpSender();
       }
