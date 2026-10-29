@@ -276,7 +276,7 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, 'localhost', () => {
     console.log(`[AURA-BOLT Server] Running on http://localhost:${PORT}`);
   });
 }
