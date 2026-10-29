@@ -15,7 +15,7 @@ import { RealUdpFileTransferSession } from './src/core/udpTransfer';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const app = express();
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -270,15 +270,51 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: {
+          server: httpServer,
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   }
 
-  httpServer.listen(PORT, 'localhost', () => {
-    console.log(`[AURA-BOLT Server] Running on http://localhost:${PORT}`);
-  });
+  // Gracefully handle EADDRINUSE by trying next available ports if 3000 is occupied
+  let targetPort = PORT;
+  const maxAttempts = 10;
+  let attempts = 0;
+
+  function bindHttpServer(port: number) {
+    httpServer.removeAllListeners('error');
+    httpServer.once('error', (err: any) => {
+      if (err.code === 'EADDRINUSE' && attempts < maxAttempts) {
+        attempts++;
+        console.warn(`[AURA-BOLT Notice] Port ${port} is currently in use by another process.`);
+        console.warn(`[AURA-BOLT Notice] Attempting fallback to port ${port + 1}...`);
+        bindHttpServer(port + 1);
+      } else {
+        console.error('[AURA-BOLT Fatal Error]', err);
+        process.exit(1);
+      }
+    });
+
+    httpServer.listen(port, 'localhost', () => {
+      console.log(`\n======================================================`);
+      console.log(`  AURA-BOLT Network Engineering Research Workstation`);
+      console.log(`  Local URL:  http://localhost:${port}`);
+      console.log(`  WS Stream:  ws://localhost:${port}/ws`);
+      if (port !== PORT) {
+        console.log(`  Note: Port ${PORT} was occupied; fallback to port ${port}.`);
+        console.log(`  To release port ${PORT}, run in PowerShell:`);
+        console.log(`    Get-NetTCPConnection -LocalPort ${PORT} | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`);
+      }
+      console.log(`======================================================\n`);
+    });
+  }
+
+  bindHttpServer(targetPort);
 }
 
 startServer();
