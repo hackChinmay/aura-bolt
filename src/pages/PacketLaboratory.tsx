@@ -3,7 +3,22 @@ import { PacketFrame, WindowSlot, ExperimentConfig } from '../core/types';
 import { FlyingPacketCanvas } from '../components/FlyingPacketCanvas';
 import { SlidingWindowDiagram } from '../components/SlidingWindowDiagram';
 import { PacketDetailModal } from '../components/PacketDetailModal';
-import { Play, Pause, StepForward, RotateCcw, Filter, Search, CheckCircle2, AlertOctagon, RotateCw, Copy } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  StepForward,
+  RotateCcw,
+  Filter,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCw,
+  Copy,
+  Sliders,
+  Layers,
+  ArrowRight,
+  Radio,
+} from 'lucide-react';
 
 interface PacketLaboratoryProps {
   framesHistory: PacketFrame[];
@@ -32,22 +47,19 @@ export const PacketLaboratory: React.FC<PacketLaboratoryProps> = ({
 }) => {
   const [selectedFrame, setSelectedFrame] = useState<PacketFrame | null>(null);
   const [filterType, setFilterType] = useState<
-    'ALL' | 'SUCCESSFUL' | 'DROPPED' | 'RETRANSMITTED' | 'DUPLICATE' | 'ACK'
+    'ALL' | 'DATA' | 'ACK' | 'DROPPED' | 'RETRANSMITTED'
   >('ALL');
   const [searchSeq, setSearchSeq] = useState<string>('');
 
-  // Status mapping
   const isFrameSuccessful = (f: PacketFrame) => f.status === 'delivered' || f.status === 'acked';
   const isFrameDropped = (f: PacketFrame) => f.status === 'lost' || f.status === 'ack_lost';
   const isFrameRetransmitted = (f: PacketFrame) => f.isRetransmission || f.retransmissionCount > 0;
-  const isFrameDuplicate = (f: PacketFrame) => f.status === 'rejected' || (f.isRetransmission && f.status === 'delivered');
 
   const filteredFrames = framesHistory.filter((f) => {
-    if (filterType === 'SUCCESSFUL' && !isFrameSuccessful(f)) return false;
+    if (filterType === 'DATA' && f.type !== 'DATA') return false;
+    if (filterType === 'ACK' && f.type !== 'ACK') return false;
     if (filterType === 'DROPPED' && !isFrameDropped(f)) return false;
     if (filterType === 'RETRANSMITTED' && !isFrameRetransmitted(f)) return false;
-    if (filterType === 'DUPLICATE' && !isFrameDuplicate(f)) return false;
-    if (filterType === 'ACK' && f.type !== 'ACK') return false;
     if (searchSeq !== '' && !f.seqNumber.toString().includes(searchSeq)) return false;
     return true;
   });
@@ -55,33 +67,34 @@ export const PacketLaboratory: React.FC<PacketLaboratoryProps> = ({
   const senderBase = senderSlots.length > 0 ? senderSlots[0].seqNumber : 0;
   const receiverBase = receiverSlots.length > 0 ? receiverSlots[0].seqNumber : 0;
 
-  // Counts for top summary
   const totalCount = framesHistory.length;
-  const successfulCount = framesHistory.filter(isFrameSuccessful).length;
+  const deliveredCount = framesHistory.filter(isFrameSuccessful).length;
   const droppedCount = framesHistory.filter(isFrameDropped).length;
   const retransmittedCount = framesHistory.filter(isFrameRetransmitted).length;
-  const duplicateCount = framesHistory.filter(isFrameDuplicate).length;
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto">
-      {/* Control Toolbar & Summary Indicators */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded p-4">
-        <div className="flex items-center gap-3">
+    <div className="p-5 lg:p-6 space-y-6 overflow-y-auto select-none bg-[#101216] text-[#F3F4F6]">
+      {/* Interactive Control & Live Metrics Strip */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#1D222B] border border-[#343B48] rounded-xl p-4 shadow-lg">
+        {/* Playback Controls */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onToggleRun}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded text-white transition-colors ${
-              isRunning ? 'bg-amber-600 hover:bg-amber-500' : 'bg-cyan-600 hover:bg-cyan-500'
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold font-mono rounded-lg transition-all shadow-md ${
+              isRunning
+                ? 'bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/50 hover:bg-[#FBBF24]/30'
+                : 'bg-[#A78BFA] text-[#101216] hover:bg-[#8B5CF6] border border-[#A78BFA]'
             }`}
           >
             {isRunning ? (
               <>
-                <Pause className="w-3.5 h-3.5" />
-                <span>Pause Engine</span>
+                <Pause className="w-3.5 h-3.5 fill-current" />
+                <span>PAUSE ENGINE</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5" />
-                <span>Run Simulation</span>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>START SIMULATION</span>
               </>
             )}
           </button>
@@ -89,223 +102,203 @@ export const PacketLaboratory: React.FC<PacketLaboratoryProps> = ({
           <button
             onClick={onStep}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-medium rounded-lg bg-[#252B36] hover:bg-[#343B48] disabled:opacity-40 text-[#F3F4F6] border border-[#343B48] transition-colors"
           >
-            <StepForward className="w-3.5 h-3.5" />
-            <span>Single Step Event</span>
+            <StepForward className="w-3.5 h-3.5 text-[#A78BFA]" />
+            <span>STEP (S)</span>
           </button>
 
           <button
             onClick={onReset}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors"
-            title="Reset Simulation Engine"
+            className="p-2 bg-[#252B36] hover:bg-[#343B48] text-[#9CA3AF] hover:text-[#F3F4F6] rounded-lg border border-[#343B48] transition-colors"
+            title="Reset Simulation State (R)"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Live Counters */}
+        {/* Live Ledger Counters */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
-          <div className="text-slate-400">
-            Clock: <span className="text-white font-bold">{Math.round(simTimeMs)} ms</span>
+          <div className="px-2.5 py-1 bg-[#101216] rounded border border-[#343B48] text-[#9CA3AF]">
+            Clock: <span className="text-[#F3F4F6] font-bold">{Math.round(simTimeMs)} ms</span>
           </div>
-          <div className="text-slate-600">·</div>
-          <div className="text-slate-400">
-            In-Flight: <span className="text-amber-400 font-bold">{inFlightFrames.length}</span>
+          <div className="px-2.5 py-1 bg-[#101216] rounded border border-[#343B48] text-[#9CA3AF]">
+            In-Flight: <span className="text-[#FBBF24] font-bold">{inFlightFrames.length}</span>
           </div>
-          <div className="text-slate-600">·</div>
-          <div className="text-slate-400">
-            Delivered: <span className="text-emerald-400 font-bold">{successfulCount}</span>
+          <div className="px-2.5 py-1 bg-[#101216] rounded border border-[#343B48] text-[#9CA3AF]">
+            Delivered: <span className="text-[#34D399] font-bold">{deliveredCount}</span>
           </div>
-          <div className="text-slate-600">·</div>
-          <div className="text-slate-400">
-            Dropped: <span className="text-rose-400 font-bold">{droppedCount}</span>
+          <div className="px-2.5 py-1 bg-[#101216] rounded border border-[#343B48] text-[#9CA3AF]">
+            Dropped: <span className="text-[#FB7185] font-bold">{droppedCount}</span>
           </div>
-          <div className="text-slate-600">·</div>
-          <div className="text-slate-400">
-            Retrans: <span className="text-rose-300 font-bold">{retransmittedCount}</span>
+          <div className="px-2.5 py-1 bg-[#101216] rounded border border-[#343B48] text-[#9CA3AF]">
+            Retx: <span className="text-[#FBBF24] font-bold">{retransmittedCount}</span>
           </div>
         </div>
       </div>
 
-      {/* Network Channel Canvas */}
+      {/* 1. SIGNATURE NETWORK TOPOLOGY CANVAS */}
       <FlyingPacketCanvas
         inFlightFrames={inFlightFrames}
-        onSelectFrame={(f) => setSelectedFrame(f)}
+        onSelectFrame={setSelectedFrame}
         senderBase={senderBase}
         receiverBase={receiverBase}
-        channelState="GOOD"
+        channelState={framesHistory.length % 7 === 0 && config.packetLossRate > 0.05 ? 'BAD' : 'GOOD'}
         oneWayDelayMs={config.oneWayDelayMs}
         lossPattern={config.lossPattern}
+        bandwidthKbps={config.bandwidthKbps}
+        jitterMs={config.jitterMs}
       />
 
-      {/* Sliding Window Diagrams with Modulus Ring Option */}
+      {/* 2. DEDICATED SLIDING-WINDOW & SEQUENCE RING BUFFER */}
       <SlidingWindowDiagram
         senderSlots={senderSlots}
         receiverSlots={receiverSlots}
         windowSize={config.initialWindowSize}
         protocol={config.protocol}
-        seqNumberModulus={config.seqNumberModulus}
+        seqNumberModulus={config.seqNumberModulus || 16}
       />
 
-      {/* Packet Events Audit Ledger */}
-      <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Recorded Packet Events Ledger</h3>
-            <p className="text-xs text-slate-400">
-              Audit trail distinguishing successful deliveries, dropped frames, duplicates, and retransmissions.
-            </p>
+      {/* 3. EVENT LEDGER: HIGH-DENSITY AUDIT LOG */}
+      <div className="bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-4">
+        {/* Ledger Header & Search/Filters */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#343B48]">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-[#A78BFA]" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#F3F4F6] font-mono">
+              EVENT LEDGER &amp; PACKET AUDIT TRAIL
+            </h3>
+            <span className="text-xs text-[#9CA3AF] font-mono">
+              ({filteredFrames.length} of {totalCount} events)
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Filter buttons */}
-            <div className="flex items-center p-0.5 bg-slate-950 border border-slate-800 rounded text-xs font-mono">
-              {(
-                [
-                  { id: 'ALL', label: 'All' },
-                  { id: 'SUCCESSFUL', label: 'Delivered' },
-                  { id: 'DROPPED', label: 'Dropped' },
-                  { id: 'RETRANSMITTED', label: 'Retx' },
-                  { id: 'DUPLICATE', label: 'Duplicate' },
-                  { id: 'ACK', label: 'ACKs' },
-                ] as const
-              ).map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => setFilterType(mode.id)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                    filterType === mode.id
-                      ? 'bg-slate-800 text-cyan-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sequence Search Input */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Input */}
             <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#6B7280] absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Seq #..."
+                placeholder="Search Seq #..."
                 value={searchSeq}
                 onChange={(e) => setSearchSeq(e.target.value)}
-                className="w-24 px-2 py-1 bg-slate-950 border border-slate-800 rounded text-xs text-white placeholder-slate-500 font-mono focus:outline-hidden focus:border-cyan-500"
+                className="pl-8 pr-3 py-1 bg-[#101216] border border-[#343B48] rounded text-xs font-mono text-[#F3F4F6] placeholder-[#6B7280] focus:outline-none focus:border-[#A78BFA] w-36"
               />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center p-0.5 bg-[#101216] border border-[#343B48] rounded text-xs font-mono">
+              {(['ALL', 'DATA', 'ACK', 'DROPPED', 'RETRANSMITTED'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-2.5 py-1 rounded transition-colors text-[10px] font-semibold ${
+                    filterType === type
+                      ? 'bg-[#252B36] text-[#A78BFA] border border-[#A78BFA]/30'
+                      : 'text-[#9CA3AF] hover:text-[#F3F4F6]'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Ledger Table */}
-        <div className="overflow-x-auto max-h-80">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 sticky top-0">
+        {/* Dense Event Ledger Table */}
+        <div className="overflow-x-auto rounded-lg border border-[#343B48]">
+          <table className="w-full text-left font-mono text-xs border-collapse">
+            <thead className="bg-[#101216] text-[#9CA3AF] text-[10px] uppercase tracking-wider border-b border-[#343B48]">
               <tr>
-                <th className="py-2 px-3">Frame ID</th>
-                <th className="py-2 px-3">Type</th>
-                <th className="py-2 px-3">Seq #</th>
-                <th className="py-2 px-3">Ack #</th>
-                <th className="py-2 px-3">Sent At</th>
-                <th className="py-2 px-3">Delivered At</th>
-                <th className="py-2 px-3">Transit RTT</th>
-                <th className="py-2 px-3">Status</th>
-                <th className="py-2 px-3">Retx Count</th>
-                <th className="py-2 px-3">RFC 1071 Checksum</th>
-                <th className="py-2 px-3">Loss Diagnostics</th>
+                <th className="p-2.5">Time</th>
+                <th className="p-2.5">Event ID</th>
+                <th className="p-2.5">Type</th>
+                <th className="p-2.5">Seq #</th>
+                <th className="p-2.5">Ack #</th>
+                <th className="p-2.5">Status</th>
+                <th className="p-2.5">Retrans</th>
+                <th className="p-2.5">Checksum</th>
+                <th className="p-2.5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filteredFrames.slice(-60).reverse().map((frame) => {
-                const isDropped = isFrameDropped(frame);
-                const isSuccess = isFrameSuccessful(frame);
-                const isRetrans = isFrameRetransmitted(frame);
-                const isDup = isFrameDuplicate(frame);
-
-                return (
-                  <tr
-                    key={frame.id}
-                    onClick={() => setSelectedFrame(frame)}
-                    className="hover:bg-slate-800/50 cursor-pointer transition-colors"
-                  >
-                    <td className="py-2 px-3 text-cyan-300 font-semibold">{frame.id}</td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          frame.type === 'DATA'
-                            ? 'bg-cyan-950 text-cyan-400 border border-cyan-500/30'
-                            : 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                        }`}
-                      >
-                        {frame.type}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-white font-bold">#{frame.seqNumber}</td>
-                    <td className="py-2 px-3 text-slate-400">
-                      {frame.ackNumber !== undefined ? `#${frame.ackNumber}` : '-'}
-                    </td>
-                    <td className="py-2 px-3 text-slate-400">{Math.round(frame.sentAt)}ms</td>
-                    <td className="py-2 px-3 text-slate-400">
-                      {frame.arrivedAt ? `${Math.round(frame.arrivedAt)}ms` : '-'}
-                    </td>
-                    <td className="py-2 px-3 text-cyan-400">
-                      {frame.arrivedAt ? `${Math.round(frame.arrivedAt - frame.sentAt)}ms` : '-'}
-                    </td>
-                    <td className="py-2 px-3">
-                      {isDropped && (
-                        <span className="text-rose-400 font-bold uppercase text-[10px] bg-rose-950/60 border border-rose-800/50 px-1.5 py-0.5 rounded">
-                          DROPPED
-                        </span>
-                      )}
-                      {!isDropped && isDup && (
-                        <span className="text-amber-400 font-bold uppercase text-[10px] bg-amber-950/60 border border-amber-800/50 px-1.5 py-0.5 rounded">
-                          DUPLICATE
-                        </span>
-                      )}
-                      {!isDropped && !isDup && isSuccess && (
-                        <span className="text-emerald-400 font-bold uppercase text-[10px] bg-emerald-950/60 border border-emerald-800/50 px-1.5 py-0.5 rounded">
-                          DELIVERED
-                        </span>
-                      )}
-                      {!isDropped && !isDup && !isSuccess && (
-                        <span className="text-slate-400 font-bold uppercase text-[10px]">
-                          {frame.status.replace('_', ' ')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 font-mono">
-                      {frame.retransmissionCount > 0 ? (
-                        <span className="text-rose-400 font-bold">
-                          {frame.retransmissionCount} (Retx)
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">0</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 text-slate-400">
-                      0x{frame.checksum.toString(16).toUpperCase()}
-                    </td>
-                    <td className="py-2 px-3 text-[11px] text-slate-400 truncate max-w-xs">
-                      {frame.lossReason ?? '-'}
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredFrames.length === 0 && (
+            <tbody className="divide-y divide-[#343B48]/50 bg-[#1D222B]">
+              {filteredFrames.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-8 text-center text-slate-500 italic">
-                    No packet events match filter criteria.
+                  <td colSpan={9} className="p-6 text-center text-[#6B7280] italic">
+                    No packet events match the current filter criteria.
                   </td>
                 </tr>
+              ) : (
+                filteredFrames.slice(-15).reverse().map((frame) => {
+                  const isAck = frame.type === 'ACK';
+                  const isDropped = frame.status === 'lost' || frame.status === 'ack_lost';
+                  const isRetrans = frame.isRetransmission || frame.retransmissionCount > 0;
+                  return (
+                    <tr
+                      key={frame.id}
+                      onClick={() => setSelectedFrame(frame)}
+                      className="hover:bg-[#252B36]/60 cursor-pointer transition-colors"
+                    >
+                      <td className="p-2.5 text-[#9CA3AF] whitespace-nowrap">{frame.sentAt} ms</td>
+                      <td className="p-2.5 text-[#F3F4F6] font-medium">{frame.id}</td>
+                      <td className="p-2.5">
+                        <span
+                          className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                            isAck
+                              ? 'bg-[#12352C] text-[#34D399] border border-[#34D399]/30'
+                              : 'bg-[#A78BFA]/10 text-[#A78BFA] border border-[#A78BFA]/30'
+                          }`}
+                        >
+                          {frame.type}
+                        </span>
+                      </td>
+                      <td className="p-2.5 font-bold text-[#F3F4F6]">#{frame.seqNumber}</td>
+                      <td className="p-2.5 text-[#9CA3AF]">
+                        {frame.ackNumber !== undefined ? `#${frame.ackNumber}` : '—'}
+                      </td>
+                      <td className="p-2.5">
+                        <span
+                          className={`font-semibold uppercase text-[10px] ${
+                            isDropped
+                              ? 'text-[#FB7185]'
+                              : frame.status === 'acked'
+                              ? 'text-[#34D399]'
+                              : 'text-[#60A5FA]'
+                          }`}
+                        >
+                          {frame.status.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="p-2.5">
+                        {isRetrans ? (
+                          <span className="text-[#FBBF24] font-bold">
+                            RETX ({frame.retransmissionCount})
+                          </span>
+                        ) : (
+                          <span className="text-[#6B7280]">0</span>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-[#A78BFA]">
+                        0x{frame.checksum.toString(16).toUpperCase().padStart(4, '0')}
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <span className="text-[10px] text-[#A78BFA] hover:underline">
+                          Inspect →
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Packet Modal */}
-      <PacketDetailModal frame={selectedFrame} onClose={() => setSelectedFrame(null)} />
+      {/* Packet Inspection Slide-Out Modal */}
+      {selectedFrame && (
+        <PacketDetailModal frame={selectedFrame} onClose={() => setSelectedFrame(null)} />
+      )}
     </div>
   );
 };

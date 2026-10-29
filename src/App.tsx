@@ -172,30 +172,71 @@ export function App() {
     setIsRunning(false);
   };
 
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleToggleRun();
+      } else if (e.key === 's' || e.key === 'S') {
+        handleStep();
+      } else if (e.key === 'r' || e.key === 'R') {
+        handleReset();
+      } else if (e.key === '1') {
+        setCurrentPage('dashboard');
+      } else if (e.key === '2') {
+        setCurrentPage('packet_lab');
+      } else if (e.key === '3') {
+        setCurrentPage('comparison');
+      } else if (e.key === '4') {
+        setCurrentPage('adaptive');
+      } else if (e.key === '5') {
+        setCurrentPage('builder');
+      } else if (e.key === '6') {
+        setCurrentPage('results');
+      } else if (e.key === '7') {
+        setCurrentPage('docs');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRunning, config]);
+
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      {/* Professional Technical Sidebar */}
+    <div className="flex h-screen w-screen bg-[#101216] text-[#F3F4F6] overflow-hidden font-sans select-none">
+      {/* Charcoal Engineering Sidebar */}
       <Sidebar
         currentPage={currentPage}
         onSelectPage={setCurrentPage}
         isRunning={isRunning}
         activeProtocol={config.protocol}
+        wsConnected={wsConnected}
+        simTimeMs={simTimeMs}
       />
 
-      {/* Main Content Area */}
+      {/* Main Workstation Viewport */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <Header
           currentPage={currentPage}
           isRunning={isRunning}
           onToggleRun={handleToggleRun}
           onReset={handleReset}
+          onStep={handleStep}
           executionMode={executionMode}
           onChangeExecutionMode={setExecutionMode}
           randomSeed={config.randomSeed}
+          experimentId={config.id}
           wsConnected={wsConnected}
         />
 
-        <main className="flex-1 overflow-y-auto bg-[#070b14]">
+        <main className="flex-1 overflow-y-auto bg-[#101216]">
           {currentPage === 'dashboard' && (
             <Dashboard
               summary={summary}

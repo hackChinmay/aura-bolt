@@ -12,6 +12,11 @@ import {
   Layers,
   Sparkles,
   Zap,
+  Radio,
+  Server,
+  Settings,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ExperimentBuilderProps {
@@ -25,13 +30,14 @@ export const ExperimentBuilder: React.FC<ExperimentBuilderProps> = ({
   onChangeConfig,
   onRunSimulation,
 }) => {
-  const [activeTab, setActiveTab] = useState<'simulator' | 'real_udp'>('simulator');
+  const [activeMode, setActiveMode] = useState<'simulator' | 'real_udp'>('simulator');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('stable_network');
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
 
   // Real UDP Transfer local state
   const [udpPayloadSizeKb, setUdpPayloadSizeKb] = useState<number>(32);
   const [udpCustomText, setUdpCustomText] = useState<string>(
-    'AURA-BOLT Network Research Protocol: Verified bit-exact data transfer across genuine Linux UDP sockets with RFC 1071 internet checksums and SHA-256 integrity verification.'
+    'AURA-BOLT Network Systems Research Laboratory: Verified binary data transfer across real Linux UDP sockets with RFC 1071 internet checksums and end-to-end SHA-256 integrity verification.'
   );
   const [udpTransferActive, setUdpTransferActive] = useState<boolean>(false);
   const [udpTelemetry, setUdpTelemetry] = useState<any>(null);
@@ -91,494 +97,428 @@ export const ExperimentBuilder: React.FC<ExperimentBuilderProps> = ({
   };
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto">
-      {/* Top Segmented Controls: Simulator vs Real UDP */}
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded p-4">
-        <div>
-          <h2 className="text-base font-semibold text-white">Experiment & Scenario Engine</h2>
-          <p className="text-xs text-slate-400">
-            Configure channel delay, jitter, Gilbert-Elliott burst transitions, or trigger genuine UDP file transfers.
-          </p>
+    <div className="p-5 lg:p-6 space-y-6 overflow-y-auto select-none bg-[#101216] text-[#F3F4F6]">
+      {/* Top Header & Execution Environment Selector */}
+      <div className="bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-[#343B48]">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-[#9CA3AF]">
+              <Settings className="w-4 h-4 text-[#A78BFA]" />
+              <span className="font-bold text-[#F3F4F6] uppercase tracking-wider">
+                EXPERIMENTAL CONFIGURATION STUDIO
+              </span>
+            </div>
+            <p className="text-xs text-[#9CA3AF] mt-0.5">
+              Multi-channel impairment modeling, adaptive cost weights, and genuine Linux socket testing.
+            </p>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="flex items-center p-0.5 bg-[#101216] border border-[#343B48] rounded text-xs font-mono">
+            <button
+              onClick={() => {
+                setActiveMode('simulator');
+                onChangeConfig({ ...config, executionMode: 'simulation' });
+              }}
+              className={`px-3 py-1.5 rounded transition-all font-semibold ${
+                activeMode === 'simulator'
+                  ? 'bg-[#252B36] text-[#A78BFA] border border-[#A78BFA]/30'
+                  : 'text-[#9CA3AF] hover:text-[#F3F4F6]'
+              }`}
+            >
+              Deterministic Simulator
+            </button>
+            <button
+              onClick={() => {
+                setActiveMode('real_udp');
+                onChangeConfig({ ...config, executionMode: 'real_udp' });
+              }}
+              className={`px-3 py-1.5 rounded transition-all font-semibold ${
+                activeMode === 'real_udp'
+                  ? 'bg-[#252B36] text-[#FBBF24] border border-[#FBBF24]/30'
+                  : 'text-[#9CA3AF] hover:text-[#F3F4F6]'
+              }`}
+            >
+              Real Linux UDP Sockets
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center p-0.5 bg-slate-950 border border-slate-800 rounded">
+        {/* Action Button & Configuration Summary Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs pt-1">
+          <div className="text-[#9CA3AF]">
+            Effective Plan: <strong className="text-[#F3F4F6]">{config.name}</strong> ·{' '}
+            <span className="text-[#A78BFA]">{config.protocol.replace(/_/g, ' ').toUpperCase()}</span> ·{' '}
+            <span className="text-[#60A5FA]">{config.totalFrames} frames</span> ·{' '}
+            <span className="text-[#FBBF24]">{config.oneWayDelayMs}ms delay</span>
+          </div>
+
           <button
-            onClick={() => setActiveTab('simulator')}
-            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-              activeTab === 'simulator'
-                ? 'bg-slate-800 text-cyan-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={activeMode === 'simulator' ? onRunSimulation : handleStartRealUdp}
+            className="flex items-center gap-2 px-4 py-2 bg-[#A78BFA] hover:bg-[#8B5CF6] text-[#101216] font-bold rounded-lg transition-all shadow-md shrink-0"
           >
-            Deterministic Simulator
-          </button>
-          <button
-            onClick={() => setActiveTab('real_udp')}
-            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-              activeTab === 'real_udp'
-                ? 'bg-slate-800 text-amber-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Real UDP Socket Transfer
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>
+              {activeMode === 'simulator' ? 'EXECUTE BENCHMARK RUN' : 'COMMENCE UDP SOCKET TRANSFER'}
+            </span>
           </button>
         </div>
       </div>
 
-      {activeTab === 'simulator' ? (
+      {activeMode === 'simulator' ? (
         <div className="space-y-6">
-          {/* Preset Selector */}
-          <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-                Benchmark Presets (Click to Apply)
-              </span>
-              <span className="text-slate-500 text-[11px]">8 Curated Network Environments</span>
+          {/* SECTION A: SCENARIO PRESET LIBRARY */}
+          <div className="bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-3 font-mono">
+            <div className="text-xs font-bold text-[#F3F4F6] uppercase tracking-wider pb-2 border-b border-[#343B48] flex items-center justify-between">
+              <span>SECTION A: RESEARCH SCENARIO PRESET LIBRARY</span>
+              <span className="text-[10px] text-[#A78BFA]">8 Reference Baselines</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {EXPERIMENT_PRESETS.map((preset) => {
-                const isSelected = selectedPresetId === preset.id;
+                const isSelected = config.name === preset.name || selectedPresetId === preset.id;
                 return (
                   <button
                     key={preset.id}
                     onClick={() => applyPreset(preset.id)}
-                    className={`text-left p-3 rounded border text-xs transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-cyan-950/40 border-cyan-500 text-cyan-200 shadow-sm'
-                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-[#252B36] border-[#A78BFA] shadow-md shadow-[#A78BFA]/10'
+                        : 'bg-[#101216] border-[#343B48] hover:border-[#4B5563]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-white truncate">{preset.name}</span>
-                      <span className="text-[10px] text-cyan-400 font-mono">{preset.badge}</span>
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="font-bold text-[#F3F4F6] truncate max-w-[130px]">
+                          {preset.name.split('. ')[1] || preset.name}
+                        </span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                            isSelected
+                              ? 'bg-[#A78BFA]/20 text-[#A78BFA]'
+                              : 'bg-[#252B36] text-[#9CA3AF]'
+                          }`}
+                        >
+                          {preset.badge}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#9CA3AF] line-clamp-2 leading-relaxed font-sans mb-2">
+                        {preset.description}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                      {preset.description}
-                    </p>
+
+                    <div className="text-[9px] text-[#6B7280] pt-1.5 border-t border-[#343B48]/40 flex justify-between">
+                      <span>Loss: {Math.round((preset.config.packetLossRate || 0) * 100)}%</span>
+                      <span>RTT: {(preset.config.oneWayDelayMs || 15) * 2}ms</span>
+                    </div>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Detailed Parameter Sliders Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Column 1: Protocol & Sliding Window Bounds */}
-            <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-4">
-              <div className="text-xs font-semibold text-slate-200 uppercase tracking-wider pb-2 border-b border-slate-800">
-                1. Protocol & Window Limits
+          {/* 3-COLUMN CONTROL MATRIX: B, C, D */}
+          <div className="grid grid-cols-12 gap-5 font-mono text-xs">
+            {/* SECTION B: PROTOCOL CONFIGURATION (Cols 1-4) */}
+            <div className="col-span-12 lg:col-span-4 bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-4">
+              <div className="text-xs font-bold text-[#F3F4F6] uppercase tracking-wider pb-2 border-b border-[#343B48] flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-[#A78BFA]" />
+                SECTION B: PROTOCOL PARAMETERS
               </div>
 
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Reliable Protocol</label>
-                <select
-                  value={config.protocol}
-                  onChange={(e) =>
-                    onChangeConfig({
-                      ...config,
-                      protocol: e.target.value as ProtocolType,
-                      isAdaptive: e.target.value === 'aura_bolt',
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-hidden focus:border-cyan-500"
-                >
-                  <option value="aura_bolt">AURA-BOLT (Burst-Aware Adaptive)</option>
-                  <option value="selective_repeat">Selective Repeat ARQ</option>
-                  <option value="go_back_n">Go-Back-N ARQ</option>
-                  <option value="stop_and_wait">Stop-and-Wait ARQ</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Initial Window Size:</span>
-                  <span className="text-white font-mono">{config.initialWindowSize} frames</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="32"
-                  value={config.initialWindowSize}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, initialWindowSize: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Receiver Buffer Size:</span>
-                  <span className="text-white font-mono">{config.receiverBufferSize} frames</span>
-                </div>
-                <input
-                  type="range"
-                  min="4"
-                  max="48"
-                  value={config.receiverBufferSize}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, receiverBufferSize: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Total Payload Frames:</span>
-                  <span className="text-white font-mono">{config.totalFrames} frames</span>
-                </div>
-                <input
-                  type="range"
-                  min="20"
-                  max="150"
-                  step="10"
-                  value={config.totalFrames}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, totalFrames: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Initial RTO Timer:</span>
-                  <span className="text-white font-mono">{config.initialRtoMs} ms</span>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="800"
-                  step="25"
-                  value={config.initialRtoMs}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, initialRtoMs: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-            </div>
-
-            {/* Column 2: Channel Impairments */}
-            <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-4">
-              <div className="text-xs font-semibold text-slate-200 uppercase tracking-wider pb-2 border-b border-slate-800">
-                2. Channel Delay & Loss Pattern
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>One-Way Delay:</span>
-                  <span className="text-white font-mono">{config.oneWayDelayMs} ms</span>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max="200"
-                  value={config.oneWayDelayMs}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, oneWayDelayMs: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Gaussian Jitter:</span>
-                  <span className="text-white font-mono">±{config.jitterMs} ms</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="30"
-                  value={config.jitterMs}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, jitterMs: parseInt(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Data Packet Loss Rate:</span>
-                  <span className="text-rose-400 font-mono">
-                    {Math.round(config.packetLossRate * 100)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="0.30"
-                  step="0.01"
-                  value={config.packetLossRate}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, packetLossRate: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-rose-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Reverse ACK Loss Rate:</span>
-                  <span className="text-amber-400 font-mono">
-                    {Math.round(config.ackLossRate * 100)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="0.25"
-                  step="0.01"
-                  value={config.ackLossRate}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, ackLossRate: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Loss Impairment Model</label>
-                <select
-                  value={config.lossPattern}
-                  onChange={(e) =>
-                    onChangeConfig({
-                      ...config,
-                      lossPattern: e.target.value as any,
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-hidden focus:border-cyan-500"
-                >
-                  <option value="burst">Gilbert-Elliott Markov Chain (Burst)</option>
-                  <option value="random">Independent Bernoulli Loss (Random)</option>
-                  <option value="alternating">Alternating Channel Fade</option>
-                  <option value="sudden_degradation">Sudden Mid-Transfer Degradation</option>
-                  <option value="recovery">Deep Fade With Recovery</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Column 3: AURA-BOLT Objective Weights & Ablation */}
-            <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-4">
-              <div className="text-xs font-semibold text-slate-200 uppercase tracking-wider pb-2 border-b border-slate-800">
-                3. Adaptive Weights & Ablation
-              </div>
-
-              <div className="bg-slate-950 p-3 rounded border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-300 font-medium">Ablation: Burst Awareness</span>
-                  <input
-                    type="checkbox"
-                    checked={config.enableBurstAwareness}
+              <div className="space-y-3">
+                {/* Protocol Selector */}
+                <div>
+                  <label className="text-[10px] text-[#9CA3AF] uppercase block mb-1">
+                    ARQ Protocol Architecture
+                  </label>
+                  <select
+                    value={config.protocol}
                     onChange={(e) =>
-                      onChangeConfig({ ...config, enableBurstAwareness: e.target.checked })
+                      onChangeConfig({
+                        ...config,
+                        protocol: e.target.value as ProtocolType,
+                        isAdaptive:
+                          e.target.value === 'aura_bolt' || e.target.value === 'loss_rate_adaptive',
+                      })
                     }
-                    className="w-4 h-4 accent-cyan-500 rounded"
+                    className="w-full bg-[#101216] border border-[#343B48] rounded px-3 py-1.5 text-[#F3F4F6] focus:outline-none focus:border-[#A78BFA]"
+                  >
+                    <option value="stop_and_wait">Stop-and-Wait ARQ (Alternating Bit)</option>
+                    <option value="go_back_n">Go-Back-N ARQ (Cumulative ACK)</option>
+                    <option value="selective_repeat">Selective Repeat ARQ (Individual SACK)</option>
+                    <option value="loss_rate_adaptive">Simple Loss-Rate Adaptive</option>
+                    <option value="aura_bolt">AURA-BOLT (Burst-Aware Adaptive ARQ)</option>
+                  </select>
+                </div>
+
+                {/* Frame Count */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Payload Frame Count:</span>
+                    <span className="text-[#F3F4F6] font-bold">{config.totalFrames} frames</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="200"
+                    step="10"
+                    value={config.totalFrames}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, totalFrames: Number(e.target.value) })
+                    }
+                    className="w-full accent-[#A78BFA]"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 leading-normal">
-                  Toggle off to disable Gilbert-Elliott burst correlation and evaluate baseline loss-rate control.
-                </p>
-              </div>
 
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Goodput Weight (α):</span>
-                  <span className="text-cyan-400 font-mono">{config.alpha}</span>
+                {/* Initial Window Size */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Initial Sender Window (Ws):</span>
+                    <span className="text-[#A78BFA] font-bold">{config.initialWindowSize} frames</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="32"
+                    value={config.initialWindowSize}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, initialWindowSize: Number(e.target.value) })
+                    }
+                    className="w-full accent-[#A78BFA]"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.8"
-                  step="0.05"
-                  value={config.alpha}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, alpha: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-cyan-500"
-                />
-              </div>
 
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Latency Penalty (β):</span>
-                  <span className="text-amber-400 font-mono">{config.beta}</span>
+                {/* Sequence Modulus */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Sequence Modulus (M):</span>
+                    <span className="text-[#60A5FA] font-bold">M={config.seqNumberModulus || 16}</span>
+                  </div>
+                  <select
+                    value={config.seqNumberModulus || 16}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, seqNumberModulus: Number(e.target.value) })
+                    }
+                    className="w-full bg-[#101216] border border-[#343B48] rounded px-3 py-1.5 text-[#F3F4F6] focus:outline-none focus:border-[#A78BFA]"
+                  >
+                    <option value="16">16 (4-bit Sequence Numbers)</option>
+                    <option value="32">32 (5-bit Sequence Numbers)</option>
+                    <option value="64">64 (6-bit Sequence Numbers)</option>
+                    <option value="256">256 (8-bit Sequence Numbers)</option>
+                  </select>
                 </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.6"
-                  step="0.05"
-                  value={config.beta}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, beta: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-amber-500"
-                />
+              </div>
+            </div>
+
+            {/* SECTION C: CHANNEL MODEL (Cols 5-8) */}
+            <div className="col-span-12 lg:col-span-4 bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-4">
+              <div className="text-xs font-bold text-[#F3F4F6] uppercase tracking-wider pb-2 border-b border-[#343B48] flex items-center gap-2">
+                <Radio className="w-3.5 h-3.5 text-[#60A5FA]" />
+                SECTION C: CHANNEL IMPAIRMENT
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Retransmission Penalty (γ):</span>
-                  <span className="text-rose-400 font-mono">{config.gamma}</span>
+              <div className="space-y-3">
+                {/* One-Way Delay */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">One-Way Latency:</span>
+                    <span className="text-[#60A5FA] font-bold">{config.oneWayDelayMs} ms</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="250"
+                    step="5"
+                    value={config.oneWayDelayMs}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, oneWayDelayMs: Number(e.target.value) })
+                    }
+                    className="w-full accent-[#60A5FA]"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min="0.05"
-                  max="0.5"
-                  step="0.05"
-                  value={config.gamma}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, gamma: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-rose-500"
-                />
-              </div>
 
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Pseudo-Random Seed:</span>
-                  <span className="text-white font-mono">{config.randomSeed}</span>
+                {/* Forward Loss Rate */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Data Packet Loss Rate:</span>
+                    <span className="text-[#FB7185] font-bold">
+                      {(config.packetLossRate * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="0.4"
+                    step="0.01"
+                    value={config.packetLossRate}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, packetLossRate: Number(e.target.value) })
+                    }
+                    className="w-full accent-[#FB7185]"
+                  />
                 </div>
-                <input
-                  type="number"
-                  value={config.randomSeed}
-                  onChange={(e) =>
-                    onChangeConfig({ ...config, randomSeed: parseInt(e.target.value) || 42 })
-                  }
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white font-mono"
-                />
+
+                {/* ACK Loss Rate */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Reverse ACK Loss Rate:</span>
+                    <span className="text-[#FBBF24] font-bold">
+                      {(config.ackLossRate * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="0.3"
+                    step="0.01"
+                    value={config.ackLossRate}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, ackLossRate: Number(e.target.value) })
+                    }
+                    className="w-full accent-[#FBBF24]"
+                  />
+                </div>
+
+                {/* Loss Model Pattern */}
+                <div>
+                  <label className="text-[10px] text-[#9CA3AF] uppercase block mb-1">
+                    Error Distribution Process
+                  </label>
+                  <select
+                    value={config.lossPattern}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, lossPattern: e.target.value as any })
+                    }
+                    className="w-full bg-[#101216] border border-[#343B48] rounded px-3 py-1.5 text-[#F3F4F6] focus:outline-none focus:border-[#A78BFA]"
+                  >
+                    <option value="random">Independent Bernoulli Trials</option>
+                    <option value="burst">Gilbert-Elliott 2-State Markov Chain</option>
+                    <option value="sudden_degradation">Sudden Channel Step Degradation</option>
+                    <option value="recovery">Deep Fade with Subsequent Recovery</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION D: ADAPTIVE OPTIMIZATION WEIGHTS (Cols 9-12) */}
+            <div className="col-span-12 lg:col-span-4 bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-4">
+              <div className="text-xs font-bold text-[#F3F4F6] uppercase tracking-wider pb-2 border-b border-[#343B48] flex items-center gap-2">
+                <Sliders className="w-3.5 h-3.5 text-[#34D399]" />
+                SECTION D: ADAPTIVE OPTIMIZATION
               </div>
 
-              <button
-                onClick={onRunSimulation}
-                className="w-full mt-2 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold tracking-wide transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Play className="w-3.5 h-3.5" />
-                <span>Execute Configured Simulation</span>
-              </button>
+              <div className="space-y-3">
+                {/* Burst Awareness Toggle */}
+                <div className="p-2.5 bg-[#101216] rounded-lg border border-[#343B48] flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-[#F3F4F6] text-xs">Burst-Loss Awareness</div>
+                    <div className="text-[10px] text-[#9CA3AF]">Ablation Study Flag</div>
+                  </div>
+                  <button
+                    onClick={() =>
+                      onChangeConfig({
+                        ...config,
+                        enableBurstAwareness: !config.enableBurstAwareness,
+                      })
+                    }
+                    className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                      config.enableBurstAwareness
+                        ? 'bg-[#12352C] text-[#34D399] border border-[#34D399]/40'
+                        : 'bg-[#252B36] text-[#6B7280] border border-[#343B48]'
+                    }`}
+                  >
+                    {config.enableBurstAwareness ? 'ENABLED' : 'DISABLED'}
+                  </button>
+                </div>
+
+                {/* Alpha Weight */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Goodput Utility (α):</span>
+                    <span className="text-[#34D399] font-bold">{config.alpha}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="2.0"
+                    step="0.1"
+                    value={config.alpha}
+                    onChange={(e) => onChangeConfig({ ...config, alpha: Number(e.target.value) })}
+                    className="w-full accent-[#34D399]"
+                  />
+                </div>
+
+                {/* Beta Weight */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Latency Penalty (β):</span>
+                    <span className="text-[#60A5FA] font-bold">{config.beta}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="2.0"
+                    step="0.1"
+                    value={config.beta}
+                    onChange={(e) => onChangeConfig({ ...config, beta: Number(e.target.value) })}
+                    className="w-full accent-[#60A5FA]"
+                  />
+                </div>
+
+                {/* Random Seed */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-[#9CA3AF]">Reproducible Seed:</span>
+                    <span className="text-[#A78BFA] font-bold">{config.randomSeed}</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={config.randomSeed}
+                    onChange={(e) =>
+                      onChangeConfig({ ...config, randomSeed: Number(e.target.value) })
+                    }
+                    className="w-full bg-[#101216] border border-[#343B48] rounded px-3 py-1.5 text-[#F3F4F6] focus:outline-none focus:border-[#A78BFA]"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        /* Real UDP File Transfer Mode */
-        <div className="bg-slate-900 border border-slate-800 rounded p-6 space-y-6">
-          <div className="flex items-start justify-between pb-4 border-b border-slate-800">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white">Genuine Localhost UDP File Transfer</span>
-                <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-mono px-2 py-0.5 rounded font-bold">
-                  NATIVE dgram SOCKETS
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                Binds two distinct UDP sockets on 127.0.0.1 (Sender: port 19001, Receiver: port 19002) using Node.js `dgram` library.
-                Packets are framed in 32-byte binary structures with RFC 1071 checksums and verified using SHA-256.
-              </p>
-            </div>
-
-            <button
-              onClick={handleStartRealUdp}
-              disabled={udpTransferActive}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded text-xs font-bold tracking-wide transition-colors shadow-lg"
-            >
-              {udpTransferActive ? 'Transferring Across UDP Sockets...' : 'Initiate Real UDP Transfer'}
-            </button>
+        /* REAL LINUX UDP SOCKETS WORKSPACE */
+        <div className="bg-[#1D222B] border border-[#343B48] rounded-xl p-5 shadow-lg space-y-5 font-mono text-xs">
+          <div className="pb-3 border-b border-[#343B48] flex items-center justify-between">
+            <span className="font-bold text-[#F3F4F6] text-sm flex items-center gap-2">
+              <Server className="w-4 h-4 text-[#FBBF24]" />
+              GENUINE DGRAM UDP SOCKET TRANSFER PIPELINE
+            </span>
+            <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#101216] text-[#FBBF24] border border-[#FBBF24]/40">
+              PORT 19001 ➔ 19002
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Payload Content</label>
-                <textarea
-                  rows={4}
-                  value={udpCustomText}
-                  onChange={(e) => setUdpCustomText(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xs text-white font-mono focus:outline-hidden focus:border-cyan-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-4 text-xs font-mono">
-                <span className="text-slate-400">Preset Size:</span>
-                {[16, 32, 64, 128].map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => {
-                      setUdpPayloadSizeKb(sz);
-                      setUdpCustomText('');
-                    }}
-                    className={`px-2.5 py-1 rounded border ${
-                      udpPayloadSizeKb === sz && !udpCustomText
-                        ? 'bg-cyan-950 text-cyan-300 border-cyan-500'
-                        : 'bg-slate-950 text-slate-400 border-slate-800'
-                    }`}
-                  >
-                    {sz} KB
-                  </button>
-                ))}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase text-[#9CA3AF] block font-bold">
+                Transfer Payload Text Content
+              </label>
+              <textarea
+                rows={4}
+                value={udpCustomText}
+                onChange={(e) => setUdpCustomText(e.target.value)}
+                className="w-full bg-[#101216] border border-[#343B48] rounded-lg p-3 text-[#F3F4F6] text-xs focus:outline-none focus:border-[#A78BFA]"
+              />
             </div>
 
-            {/* Live UDP Status & SHA-256 Verification Card */}
-            <div className="bg-slate-950 border border-slate-800 rounded p-4 font-mono text-xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <span className="font-semibold text-slate-300">Live UDP Telemetry</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                    udpTelemetry?.status === 'completed'
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                      : udpTransferActive
-                      ? 'bg-cyan-950 text-cyan-400 border border-cyan-500/30 animate-pulse'
-                      : 'text-slate-500'
-                  }`}
-                >
-                  {udpTelemetry ? udpTelemetry.status.toUpperCase() : 'READY'}
-                </span>
-              </div>
-
-              {udpTelemetry ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Total Size:</span>
-                    <span className="text-white font-bold">{udpTelemetry.totalBytes} Bytes ({udpTelemetry.totalChunks} Chunks)</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Delivered & Acked:</span>
-                    <span className="text-emerald-400 font-bold">{udpTelemetry.chunksAcked} / {udpTelemetry.totalChunks}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Retransmissions:</span>
-                    <span className="text-rose-400 font-bold">{udpTelemetry.retransmissions}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Real Goodput:</span>
-                    <span className="text-cyan-400 font-bold">{udpTelemetry.goodputKbps} Kbps</span>
-                  </div>
-
-                  {/* SHA-256 Hash Matching */}
-                  <div className="pt-2 border-t border-slate-800/80 space-y-1">
-                    <div className="text-[10px] text-slate-500">Sender SHA-256 Digest:</div>
-                    <div className="text-[10px] text-cyan-300 truncate">{udpTelemetry.senderOriginalSha256}</div>
-                    
-                    <div className="text-[10px] text-slate-500 pt-1">Receiver Reconstructed SHA-256:</div>
-                    <div className="text-[10px] text-emerald-300 truncate">{udpTelemetry.receiverReconstructedSha256}</div>
-
-                    <div className="pt-2 flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>{udpTelemetry.integrityVerified ? 'BIT-EXACT SHA-256 MATCH CONFIRMED' : 'Reconstructing Stream...'}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-slate-500 italic">
-                  Press 'Initiate Real UDP Transfer' to transmit binary chunks over localhost UDP sockets.
+            <div className="p-4 bg-[#101216] rounded-lg border border-[#343B48] space-y-2">
+              <div className="text-[11px] font-bold text-[#F3F4F6] uppercase">Socket Architecture</div>
+              <p className="text-[11px] text-[#9CA3AF] leading-relaxed font-sans">
+                Packets are framed into 32-byte binary structures, checksummed via RFC 1071 internet algorithm, and transmitted over genuine kernel UDP sockets to verify real socket behavior and buffer handling.
+              </p>
+              {udpTelemetry && (
+                <div className="pt-2 border-t border-[#343B48] text-[#34D399]">
+                  Delivered: {udpTelemetry.framesDelivered} / {udpTelemetry.totalFrames} frames ({udpTelemetry.goodputKbps} Kbps)
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { WindowSlot } from '../core/types';
-import { Layers, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { Layers, ShieldCheck, AlertCircle, RefreshCw, CircleDot } from 'lucide-react';
 
 interface SlidingWindowDiagramProps {
   senderSlots: WindowSlot[];
@@ -21,29 +21,34 @@ export const SlidingWindowDiagram: React.FC<SlidingWindowDiagramProps> = ({
 
   const getSlotStyle = (state: WindowSlot['state'], retransmissions: number) => {
     if (retransmissions > 0 && state === 'sent_unacked') {
-      return 'bg-rose-950/80 border-rose-500 text-rose-300 shadow-sm shadow-rose-950/40';
+      return 'bg-[#3A2029] border-[#FB7185] text-[#FB7185] shadow-sm shadow-[#FB7185]/20';
     }
     switch (state) {
       case 'sent_unacked':
-        return 'bg-amber-950/70 border-amber-500 text-amber-300';
+        return 'bg-[#FBBF24]/15 border-[#FBBF24] text-[#FBBF24]';
       case 'acked':
-        return 'bg-emerald-950/70 border-emerald-500 text-emerald-300';
+        return 'bg-[#12352C] border-[#34D399] text-[#34D399]';
       case 'buffered_out_of_order':
-        return 'bg-purple-950/70 border-purple-400 text-purple-200';
+        return 'bg-[#60A5FA]/15 border-[#60A5FA] text-[#60A5FA]';
       case 'ready_to_send':
       default:
-        return 'bg-slate-900 border-slate-700 text-slate-400';
+        return 'bg-[#101216] border-[#343B48] text-[#9CA3AF]';
     }
   };
 
   const getSlotLabel = (state: WindowSlot['state'], retrans: number) => {
     if (retrans > 0 && state === 'sent_unacked') return `RETX (${retrans})`;
     switch (state) {
-      case 'sent_unacked': return 'IN-FLIGHT';
-      case 'acked': return 'ACKED';
-      case 'buffered_out_of_order': return 'BUFFERED';
-      case 'ready_to_send': return 'QUEUED';
-      default: return 'IDLE';
+      case 'sent_unacked':
+        return 'IN-FLIGHT';
+      case 'acked':
+        return 'ACKED';
+      case 'buffered_out_of_order':
+        return 'BUFFERED';
+      case 'ready_to_send':
+        return 'QUEUED';
+      default:
+        return 'IDLE';
     }
   };
 
@@ -52,7 +57,7 @@ export const SlidingWindowDiagram: React.FC<SlidingWindowDiagramProps> = ({
   const lastSent = senderSlots.length > 0 ? senderSlots[senderSlots.length - 1].seqNumber : 0;
   const rcvBase = receiverSlots.length > 0 ? receiverSlots[0].seqNumber : 0;
 
-  // Ring buffer points calculation
+  // Ring buffer calculations
   const ringSize = Math.max(16, seqNumberModulus);
   const ringSlots = Array.from({ length: ringSize }, (_, i) => {
     const seq = i;
@@ -68,207 +73,235 @@ export const SlidingWindowDiagram: React.FC<SlidingWindowDiagramProps> = ({
   });
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded p-4 space-y-4">
+    <div className="bg-[#1D222B] border border-[#343B48] rounded-xl p-5 space-y-4 shadow-lg select-none">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-cyan-400" />
-          <span className="font-semibold text-white text-xs uppercase tracking-wider">
-            Sliding Window &amp; Sequence Ring Buffer
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#343B48]">
+        <div className="flex items-center gap-2.5">
+          <Layers className="w-4 h-4 text-[#A78BFA]" />
+          <span className="font-bold text-[#F3F4F6] text-xs uppercase tracking-wider">
+            SLIDING WINDOW &amp; SEQUENCE SPACE
           </span>
-          <span className="text-slate-500 font-mono text-xs">·</span>
-          <span className="text-slate-300 font-mono text-xs">
-            {protocol.replace('_', ' ').toUpperCase()} (Ws={windowSize})
+          <span className="text-[#343B48] font-mono">|</span>
+          <span className="text-[#A78BFA] font-mono text-xs font-semibold">
+            {protocol.replace(/_/g, ' ').toUpperCase()} (Ws={windowSize})
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center p-0.5 bg-slate-950 border border-slate-800 rounded text-xs font-mono">
-            <button
-              onClick={() => setViewMode('linear')}
-              className={`px-2 py-0.5 rounded transition-colors ${
-                viewMode === 'linear' ? 'bg-slate-800 text-cyan-400 font-semibold' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Linear Strip
-            </button>
-            <button
-              onClick={() => setViewMode('ring')}
-              className={`px-2 py-0.5 rounded transition-colors ${
-                viewMode === 'ring' ? 'bg-slate-800 text-cyan-400 font-semibold' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Sequence Ring (Mod {ringSize})
-            </button>
-          </div>
+        {/* View Mode Toggle: Linear Strip vs Ring */}
+        <div className="flex items-center p-0.5 bg-[#101216] border border-[#343B48] rounded text-xs font-mono">
+          <button
+            onClick={() => setViewMode('linear')}
+            className={`px-3 py-1 rounded transition-colors ${
+              viewMode === 'linear'
+                ? 'bg-[#252B36] text-[#A78BFA] font-semibold shadow-sm border border-[#A78BFA]/30'
+                : 'text-[#9CA3AF] hover:text-[#F3F4F6]'
+            }`}
+          >
+            Linear Strip
+          </button>
+          <button
+            onClick={() => setViewMode('ring')}
+            className={`px-3 py-1 rounded transition-colors ${
+              viewMode === 'ring'
+                ? 'bg-[#252B36] text-[#A78BFA] font-semibold shadow-sm border border-[#A78BFA]/30'
+                : 'text-[#9CA3AF] hover:text-[#F3F4F6]'
+            }`}
+          >
+            Circular Ring
+          </button>
         </div>
       </div>
 
-      {viewMode === 'linear' ? (
-        <div className="space-y-4">
-          {/* Sender Window Strip */}
+      {/* Mode 1: LINEAR SLIDING WINDOW STRIP */}
+      {viewMode === 'linear' && (
+        <div className="space-y-5">
+          {/* SENDER SLIDING WINDOW */}
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-cyan-300">SENDER WINDOW:</span>
-                <span>LAR = #{sendBase} (Last ACK Recv)</span>
-                <span>·</span>
-                <span>LFS = #{lastSent} (Last Frame Sent)</span>
-              </div>
-              <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-amber-500" /> In-Flight
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-emerald-500" /> Acknowledged
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-rose-500" /> Retransmitting
-                </span>
-              </div>
+            <div className="flex items-center justify-between text-xs font-mono mb-2">
+              <span className="text-[#F3F4F6] font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#A78BFA]" />
+                Sender Window Boundary: [Base: #{sendBase} ... Max: #{sendBase + windowSize - 1}]
+              </span>
+              <span className="text-[11px] text-[#9CA3AF]">
+                Active Slots: {senderSlots.length} / Capacity: {windowSize}
+              </span>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 min-h-[64px]">
-              {senderSlots.length === 0 ? (
-                <div className="text-xs text-slate-500 py-3 italic font-mono">
-                  No frames currently in sender sliding window. Start transfer to observe sliding boundaries.
-                </div>
-              ) : (
-                senderSlots.map((slot, idx) => (
+            {/* Slots Track */}
+            <div className="grid grid-cols-8 sm:grid-cols-12 md:grid-cols-16 gap-1.5 p-3 bg-[#101216] rounded-lg border border-[#343B48] overflow-x-auto">
+              {senderSlots.map((slot) => {
+                const isBase = slot.seqNumber === sendBase;
+                const style = getSlotStyle(slot.state, slot.retransmissions);
+                return (
                   <div
-                    key={`snd-slot-${idx}-${slot.seqNumber}`}
-                    className={`min-w-20 h-14 border rounded flex flex-col items-center justify-center p-1.5 font-mono transition-all ${getSlotStyle(
-                      slot.state,
-                      slot.retransmissions
-                    )}`}
+                    key={`sender-${slot.seqNumber}`}
+                    className={`relative p-2 rounded border flex flex-col items-center justify-between text-center transition-all ${style}`}
                   >
-                    <span className="text-xs font-bold">Seq #{slot.seqNumber}</span>
-                    <span className="text-[9px] mt-0.5 font-semibold">
+                    {isBase && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#A78BFA] text-[#101216] font-bold text-[8px] font-mono px-1 rounded shadow">
+                        BASE
+                      </span>
+                    )}
+                    <span className="font-bold text-xs font-mono mt-1">#{slot.seqNumber}</span>
+                    <span className="text-[8px] font-mono tracking-tight mt-1 truncate max-w-full">
                       {getSlotLabel(slot.state, slot.retransmissions)}
                     </span>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Receiver Buffer Strip */}
-          {(protocol === 'selective_repeat' || protocol === 'aura_bolt') && (
-            <div className="pt-3 border-t border-slate-800">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-purple-300">RECEIVER BUFFER:</span>
-                  <span>LFR = #{rcvBase} (Last Frame Recv)</span>
-                  <span>·</span>
-                  <span>LAF = #{rcvBase + windowSize} (Largest Acceptable)</span>
-                </div>
-                <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded bg-purple-500" /> Buffered Out-of-Order
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded bg-slate-700" /> Expecting Next
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 min-h-[56px]">
-                {receiverSlots.length === 0 ? (
-                  <div className="text-xs text-slate-500 py-2 italic font-mono">
-                    Receiver buffer currently empty (in-order delivery steady).
-                  </div>
-                ) : (
-                  receiverSlots.map((slot, idx) => (
-                    <div
-                      key={`rcv-slot-${idx}-${slot.seqNumber}`}
-                      className={`min-w-20 h-12 border rounded flex flex-col items-center justify-center p-1 font-mono transition-all ${getSlotStyle(
-                        slot.state,
-                        0
-                      )}`}
-                    >
-                      <span className="text-xs font-bold">Seq #{slot.seqNumber}</span>
-                      <span className="text-[9px] mt-0.5 font-semibold">
-                        {slot.state === 'buffered_out_of_order' ? 'BUFFERED' : 'WAITING'}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Circular Sequence Space Ring Buffer */
-        <div className="flex flex-col md:flex-row items-center justify-around gap-6 py-2">
-          {/* Circular SVG Diagram */}
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            <svg viewBox="0 0 240 240" className="w-full h-full transform -rotate-90">
-              {/* Background Ring Track */}
-              <circle
-                cx="120"
-                cy="120"
-                r="90"
-                fill="none"
-                stroke="#1e293b"
-                strokeWidth="14"
-              />
-
-              {/* Slots on Ring */}
-              {ringSlots.map((item, idx) => {
-                const angle = (idx / ringSize) * 2 * Math.PI;
-                const x = 120 + 90 * Math.cos(angle);
-                const y = 120 + 90 * Math.sin(angle);
-
-                let strokeColor = '#334155';
-                if (item.senderSlot?.state === 'acked') strokeColor = '#10b981';
-                else if (item.senderSlot?.retransmissions && item.senderSlot.retransmissions > 0) strokeColor = '#f43f5e';
-                else if (item.senderSlot?.state === 'sent_unacked') strokeColor = '#f59e0b';
-                else if (item.receiverSlot?.state === 'buffered_out_of_order') strokeColor = '#a855f7';
-
-                return (
-                  <circle
-                    key={`ring-node-${idx}`}
-                    cx={x}
-                    cy={y}
-                    r={item.isInSenderWindow ? 6 : 4}
-                    fill={strokeColor}
-                    stroke="#0f172a"
-                    strokeWidth="2"
-                  />
                 );
               })}
-            </svg>
-
-            {/* Inner Ring Metadata */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center font-mono pointer-events-none">
-              <span className="text-[10px] text-slate-500 uppercase">MODULUS</span>
-              <span className="text-xl font-bold text-white">M = {ringSize}</span>
-              <span className="text-[10px] text-cyan-400 mt-0.5">Ws ≤ ⌊M/2⌋ ({Math.floor(ringSize / 2)})</span>
             </div>
           </div>
 
-          {/* Ring Legend & Invariant Audit */}
-          <div className="space-y-3 font-mono text-xs max-w-sm">
-            <div className="bg-slate-950 p-3 rounded border border-slate-800 space-y-1.5">
-              <div className="font-semibold text-slate-300">Modulus Arithmetic &amp; Invariants:</div>
-              <p className="text-[11px] text-slate-400 leading-normal">
-                To guarantee unambiguous frame delivery under out-of-order and retransmissions, Selective Repeat requires:
-              </p>
-              <div className="text-cyan-400 font-bold text-xs bg-slate-900 p-2 rounded border border-slate-800">
-                W_sender + W_receiver ≤ M (Modulus)
-              </div>
-              <p className="text-[10px] text-slate-500">
-                Current configuration: W_s = {windowSize}, M = {ringSize}. Status:{' '}
-                {windowSize * 2 <= ringSize ? (
-                  <span className="text-emerald-400 font-bold">INVARIANT SATISFIED</span>
-                ) : (
-                  <span className="text-amber-400 font-bold">WARNING: POTENTIAL AMBIGUITY</span>
-                )}
-              </p>
+          {/* RECEIVER BUFFER / IN-ORDER REASSEMBLY */}
+          <div>
+            <div className="flex items-center justify-between text-xs font-mono mb-2">
+              <span className="text-[#F3F4F6] font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#34D399]" />
+                Receiver Expected Sequence: #{rcvBase}
+              </span>
+              <span className="text-[11px] text-[#9CA3AF]">
+                {protocol === 'selective_repeat' || protocol === 'aura_bolt'
+                  ? 'Selective Repeat Out-of-Order Reassembly Buffer'
+                  : 'In-Order Delivery SINK'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-8 sm:grid-cols-12 md:grid-cols-16 gap-1.5 p-3 bg-[#101216] rounded-lg border border-[#343B48] overflow-x-auto">
+              {receiverSlots.map((slot) => {
+                const isExpected = slot.seqNumber === rcvBase;
+                const style = getSlotStyle(slot.state, slot.retransmissions);
+                return (
+                  <div
+                    key={`receiver-${slot.seqNumber}`}
+                    className={`relative p-2 rounded border flex flex-col items-center justify-between text-center transition-all ${style}`}
+                  >
+                    {isExpected && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#34D399] text-[#101216] font-bold text-[8px] font-mono px-1 rounded shadow">
+                        EXP
+                      </span>
+                    )}
+                    <span className="font-bold text-xs font-mono mt-1">#{slot.seqNumber}</span>
+                    <span className="text-[8px] font-mono tracking-tight mt-1 truncate max-w-full">
+                      {getSlotLabel(slot.state, slot.retransmissions)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {/* Mode 2: CIRCULAR SEQUENCE-NUMBER RING */}
+      {viewMode === 'ring' && (
+        <div className="flex flex-col md:flex-row items-center justify-around gap-6 py-4 bg-[#101216] p-4 rounded-lg border border-[#343B48]">
+          <div className="relative w-64 h-64 flex items-center justify-center">
+            {/* Center Dial Meta */}
+            <div className="absolute text-center font-mono">
+              <div className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">Modulus</div>
+              <div className="text-xl font-bold text-[#A78BFA]">M={ringSize}</div>
+              <div className="text-[9px] text-[#6B7280]">Wraparound Space</div>
+            </div>
+
+            {/* Circular Ring Slots */}
+            {ringSlots.map((item, index) => {
+              const angle = (index / ringSize) * 2 * Math.PI - Math.PI / 2;
+              const radius = 100;
+              const x = 128 + radius * Math.cos(angle) - 14;
+              const y = 128 + radius * Math.sin(angle) - 14;
+
+              const isSenderBase = item.seq === sendBase % ringSize;
+              const isReceiverExpected = item.seq === rcvBase % ringSize;
+
+              let slotClass = 'bg-[#1D222B] border-[#343B48] text-[#9CA3AF]';
+              if (item.senderSlot?.state === 'sent_unacked') {
+                slotClass = 'bg-[#FBBF24]/20 border-[#FBBF24] text-[#FBBF24]';
+              } else if (item.senderSlot?.state === 'acked') {
+                slotClass = 'bg-[#12352C] border-[#34D399] text-[#34D399]';
+              } else if (item.senderSlot?.state === 'buffered_out_of_order') {
+                slotClass = 'bg-[#60A5FA]/20 border-[#60A5FA] text-[#60A5FA]';
+              }
+
+              return (
+                <div
+                  key={`ring-${item.seq}`}
+                  style={{ left: `${x}px`, top: `${y}px` }}
+                  className={`absolute w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono font-bold border transition-all ${slotClass}`}
+                  title={`Seq #${item.seq} (Sender: ${
+                    item.isInSenderWindow ? 'IN WINDOW' : 'OUTSIDE'
+                  })`}
+                >
+                  {item.seq}
+                  {isSenderBase && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#A78BFA] ring-2 ring-[#101216]" />
+                  )}
+                  {isReceiverExpected && (
+                    <span className="absolute -bottom-1 -left-1 w-2 h-2 rounded-full bg-[#34D399] ring-2 ring-[#101216]" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Ring Legend & Diagnostic Callouts */}
+          <div className="space-y-3 font-mono text-xs max-w-sm">
+            <div className="text-[11px] font-bold text-[#F3F4F6] uppercase tracking-wider pb-1 border-b border-[#343B48]">
+              Sequence Ring Invariants
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#A78BFA]" />
+              <span className="text-[#9CA3AF]">
+                Sender Base: <strong className="text-[#F3F4F6]">#{sendBase}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#34D399]" />
+              <span className="text-[#9CA3AF]">
+                Receiver Expected: <strong className="text-[#F3F4F6]">#{rcvBase}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FBBF24]" />
+              <span className="text-[#9CA3AF]">In-Flight Unacknowledged Frames</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#60A5FA]" />
+              <span className="text-[#9CA3AF]">Out-of-Order Buffered at Receiver</span>
+            </div>
+            <div className="p-2.5 bg-[#1D222B] rounded border border-[#343B48] text-[10px] text-[#9CA3AF] leading-relaxed">
+              Window Safety Invariant:{' '}
+              <span className="text-[#A78BFA] font-bold">
+                Ws ≤ ⌊M / 2⌋ = {Math.floor(ringSize / 2)}
+              </span>{' '}
+              to prevent sequence number aliasing across packet losses.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Color Semantic Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px] font-mono border-t border-[#343B48]/50 text-[#9CA3AF]">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded bg-[#34D399]" /> Acked
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded bg-[#FBBF24]" /> In-Flight
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded bg-[#FB7185]" /> Retransmitted
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded bg-[#60A5FA]" /> SACK Buffered
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded bg-[#343B48]" /> Idle
+          </span>
+        </div>
+        <div className="text-[10px] text-[#6B7280]">
+          Updates in real-time with discrete simulation engine
+        </div>
+      </div>
     </div>
   );
 };
